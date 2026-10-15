@@ -34,13 +34,27 @@
   gap: 0.25rem;
 }
 
-.task-tray:empty {
-  display: none;
+.task-tray-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--aura-surface-color, Canvas);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+  font-weight: 600;
+}
+
+.task-tray-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .task-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background: var(--aura-surface-color, Canvas);
@@ -51,4 +65,31 @@
   grid-column: 1 / -1;
   font-size: 0.875rem;
   opacity: 0.75;
+}
+
+.task-dismiss {
+  margin: 0;
+}
+
+.task-center {
+  margin-inline-start: auto;
+  margin-inline-end: 1rem;
+}
+
+.task-center-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 18rem;
+  margin-bottom: 0.5rem;
+}
+
+.task-center-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.task-center-row vaadin-progress-bar {
+  grid-column: 1 / -1;
+  margin: 0.25rem 0 0;
 }

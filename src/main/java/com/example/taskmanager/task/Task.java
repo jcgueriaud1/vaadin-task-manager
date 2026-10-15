@@ -9,6 +9,7 @@ public final class Task {
     private final AsyncAction<?> action;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
+    private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
 
     Task(AsyncAction<?> action) {
         this.action = action;
@@ -26,11 +27,20 @@ public final class Task {
         return statusText.asReadonly();
     }
 
+    /** Whether the user has removed this Finished Task from the tray. */
+    public Signal<Boolean> dismissed() {
+        return dismissed.asReadonly();
+    }
+
     TaskContext context() {
         return statusText::set;
     }
 
     void succeed() {
         state.set(TaskState.SUCCEEDED);
+    }
+
+    void dismiss() {
+        dismissed.set(true);
     }
 }

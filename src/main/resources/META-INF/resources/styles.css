@@ -118,3 +118,76 @@
   grid-column: 1 / -1;
   margin: 0.25rem 0 0;
 }
+
+.tasks-view {
+  display: grid;
+  grid-template-columns: minmax(26rem, 1fr) 2fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+@media (max-width: 52rem) {
+  .tasks-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.tasks-list > vaadin-button {
+  align-self: flex-end;
+}
+
+.tasks-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tasks-row {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  cursor: pointer;
+}
+
+.tasks-row.selected {
+  border-color: var(--aura-accent-color, currentColor);
+  background: color-mix(in srgb, var(--aura-accent-color, currentColor) 10%, transparent);
+}
+
+.task-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  align-self: start;
+}
+
+.task-detail:empty::before {
+  content: "Select a task to see its details.";
+  opacity: 0.75;
+}
+
+.task-detail h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.task-detail .task-progress {
+  margin: 0;
+}
+
+.task-detail-buttons {
+  display: flex;
+  gap: 0.5rem;
+}

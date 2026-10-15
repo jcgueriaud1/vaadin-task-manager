@@ -32,6 +32,7 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.server.VaadinSession;
 
 @SpringBootTest
 @Import(TestTaskConfig.class)
@@ -185,6 +186,60 @@ class TasksViewTest extends SpringBrowserlessTest {
 
         assertEquals("Sync with server", $(H2.class).from(detailPane()).single().getText());
         assertEquals(List.of("Sync with server"), listedTaskNames());
+    }
+
+    @Test
+    void retryStartsANewTaskAndIsDisabledWhileItRuns() {
+        start("Sync with server");
+        executor.runAll();
+        navigate(TasksView.class);
+        selectTab("Failed");
+        select("Sync with server");
+
+        test(detailButton("Retry").single()).click();
+        runPendingSignalsTasks();
+
+        assertEquals(List.of("Running (1)", "Succeeded (0)", "Failed (1)", "Cancelled (0)"), tabLabels());
+        assertEquals("Failed", detail("task-state"), "the old Task stays as it was");
+        assertFalse(detailButton("Retry").single().isEnabled());
+
+        executor.runAll();
+        runPendingSignalsTasks();
+        assertEquals(List.of("Running (0)", "Succeeded (0)", "Failed (2)", "Cancelled (0)"), tabLabels());
+        assertTrue(detailButton("Retry").single().isEnabled());
+    }
+
+    @Test
+    void clearFinishedRemovesFinishedTasksInEveryTabAndKeepsRunningOnes() {
+        start("Generate report");
+        executor.runAll();
+        start("Sync with server");
+        executor.runAll();
+        start("Send newsletter");
+        executor.runNext();
+        navigate(TasksView.class);
+        selectTab("Failed");
+        select("Sync with server");
+        TasksView secondTab = openSecondTab();
+
+        test($(Button.class).withText("Clear finished").single()).click();
+        runPendingSignalsTasks();
+
+        List<String> expected = List.of("Running (1)", "Succeeded (0)", "Failed (0)", "Cancelled (0)");
+        assertEquals(expected, tabLabels());
+        assertEquals(expected, $(Tab.class).from(secondTab).all().stream()
+                .map(tab -> tab.getElement().getTextRecursively()).toList());
+        assertFalse($(H2.class).from(detailPane()).exists(), "the cleared Task is no longer shown");
+    }
+
+    private TasksView openSecondTab() {
+        UI first = UI.getCurrent();
+        UI second = new UI();
+        second.getInternals().setSession(VaadinSession.getCurrent());
+        TasksView view = new TasksView(taskList(), clock);
+        second.add(view);
+        UI.setCurrent(first);
+        return view;
     }
 
     private TaskList taskList() {

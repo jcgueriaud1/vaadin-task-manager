@@ -14,6 +14,7 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -65,17 +66,21 @@ public class TasksView extends Div implements BeforeEnterObserver {
                     .reversed();
             rows.removeAll();
             Signal.untracked(() -> {
-                shown.forEach(task -> rows.add(row(task)));
+                shown.forEach(task -> rows.add(row(task, selected)));
                 return null;
             });
         });
-        Div list = new Div(tabs, rows);
+        Button clearFinished = new Button("Clear finished", e -> taskList.clearFinished());
+        clearFinished.addThemeVariants(ButtonVariant.TERTIARY);
+        Div list = new Div(tabs, clearFinished, rows);
         list.addClassName("tasks-list");
 
         Div detail = new Div();
         detail.addClassName("task-detail");
         Signal.effect(detail, () -> {
-            Optional<Task> task = selected.get();
+            // A selected Task may since have been cleared or evicted
+            Optional<Task> task = selected.get()
+                    .filter(t -> taskList.tasks().getValues().anyMatch(t::equals));
             detail.removeAll();
             Signal.untracked(() -> {
                 task.ifPresent(t -> detail.add(detailContent(t, taskList)));
@@ -168,7 +173,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         return new Tab(label);
     }
 
-    private static Div row(Task task) {
+    private static Div row(Task task, Signal<Optional<Task>> selected) {
         Span name = new Span(task.action().name());
         name.addClassName("task-name");
         Span statusText = new Span();
@@ -176,6 +181,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         statusText.bindText(task.statusText());
         Div row = new Div(name, statusText);
         row.addClassName("tasks-row");
+        row.bindClassName("selected", selected.map(s -> s.equals(Optional.of(task))));
         row.addClickListener(e -> e.getSource().getUI().ifPresent(ui -> ui.navigate(TasksView.class,
                 new RouteParameters(TASK_ID, String.valueOf(task.id())))));
         return row;

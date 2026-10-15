@@ -2,20 +2,26 @@ package com.example.taskmanager.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 
+import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TestExecutor;
 import com.vaadin.browserless.ComponentQuery;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.internal.UIInternals.JavaScriptInvocation;
 import com.vaadin.flow.component.page.PageVisibility;
 import com.vaadin.flow.dom.DomEvent;
 import com.vaadin.flow.internal.JacksonUtils;
@@ -29,6 +35,9 @@ class UnseenTabsTest extends SpringBrowserlessTest {
 
     @Autowired
     private TestExecutor executor;
+
+    @Autowired
+    private ApplicationContext context;
 
     private UI first;
     private UI second;
@@ -80,6 +89,59 @@ class UnseenTabsTest extends SpringBrowserlessTest {
 
         assertFalse(unseenBadge(first).exists());
         assertFalse(unseenBadge(second).exists());
+    }
+
+    @Test
+    void everyHiddenTabAsksForOneNativeNotificationTaggedWithTheTask() {
+        test(startButton("Export data")).click();
+        hide(first);
+        hide(second);
+        executor.runAll();
+        runPendingSignalsTasks();
+
+        long id = taskId();
+        for (UI ui : List.of(first, second)) {
+            List<JavaScriptInvocation> notifications = notifications(ui);
+            assertEquals(1, notifications.size());
+            assertEquals(List.of("Export data", "3 CSV files", String.valueOf(id)),
+                    notifications.getFirst().getParameters());
+        }
+    }
+
+    @Test
+    void theNotificationOfAFailedTaskShowsItsError() {
+        test(startButton("Sync with server")).click();
+        hide(first);
+        hide(second);
+        executor.runAll();
+        runPendingSignalsTasks();
+
+        assertEquals(List.of("Sync with server", "Server unreachable", String.valueOf(taskId())),
+                notifications(first).getFirst().getParameters());
+    }
+
+    @Test
+    void noNativeNotificationWhileATabIsVisibleButNotFocused() {
+        test(startButton("Export data")).click();
+        hide(first);
+        setVisibility(second, PageVisibility.VISIBLE_NOT_FOCUSED);
+        executor.runAll();
+        runPendingSignalsTasks();
+
+        assertTrue(notifications(first).isEmpty());
+        assertTrue(notifications(second).isEmpty());
+    }
+
+    private long taskId() {
+        return context.getBean(TaskList.class).tasks().peekValues().findFirst().orElseThrow().id();
+    }
+
+    /** The JavaScript calls the tab would send that show a native notification. */
+    private static List<JavaScriptInvocation> notifications(UI ui) {
+        return ui.getInternals().dumpPendingJavaScriptInvocations().stream()
+                .map(pending -> pending.getInvocation())
+                .filter(invocation -> invocation.getExpression().contains("new Notification("))
+                .toList();
     }
 
     private ComponentQuery<Span> unseenBadge(UI ui) {

@@ -208,3 +208,7 @@
   display: flex;
   gap: 0.5rem;
 }
+
+.notification-permission {
+  margin-inline-end: 1rem;
+}

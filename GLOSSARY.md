@@ -53,3 +53,7 @@ _Avoid_: Queue, task registry
 **Task history**:
 The Finished Tasks in the Task list. They are kept until the user clears them or the session ends.
 _Avoid_: Log, archive
+
+**Unseen**:
+A Finished Task the user hasn't looked at yet, because no tab of the session was visible when it finished. It stops being Unseen as soon as any tab of the session is visible.
+_Avoid_: Unread, new, missed

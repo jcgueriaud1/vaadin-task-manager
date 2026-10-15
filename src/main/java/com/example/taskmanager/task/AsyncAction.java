@@ -4,8 +4,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * An Action without Progress: something the user can start, defined once from a
- * name, a blocking mode and a work function.
+ * An Action: something the user can start, defined once from a
+ * name, a blocking mode and a work function. This one has no Progress; see
+ * {@link AsyncProgressAction} for one that has.
  *
  * @param <T> the type of value the work produces
  */
@@ -13,11 +14,18 @@ public class AsyncAction<T> {
 
     private final String name;
     private final BlockingMode blockingMode;
-    private final Function<TaskContext, T> work;
+    private final boolean reportsProgress;
+    private final Function<? super ProgressContext, T> work;
 
     public AsyncAction(String name, BlockingMode blockingMode, Function<TaskContext, T> work) {
+        this(name, blockingMode, false, work);
+    }
+
+    AsyncAction(String name, BlockingMode blockingMode, boolean reportsProgress,
+            Function<? super ProgressContext, T> work) {
         this.name = name;
         this.blockingMode = blockingMode;
+        this.reportsProgress = reportsProgress;
         this.work = work;
     }
 
@@ -27,6 +35,11 @@ public class AsyncAction<T> {
 
     public BlockingMode blockingMode() {
         return blockingMode;
+    }
+
+    /** Whether Tasks of this Action report Progress; the others show as indeterminate. */
+    public boolean reportsProgress() {
+        return reportsProgress;
     }
 
     /** Starts a new Task of this Action in the given Task list. */

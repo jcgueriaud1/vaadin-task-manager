@@ -9,6 +9,8 @@ public final class Task {
     private final AsyncAction<?> action;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
+    private final ValueSignal<Double> progress = new ValueSignal<>(0.0);
+    private final ValueSignal<String> resultSummary = new ValueSignal<>("");
 
     Task(AsyncAction<?> action) {
         this.action = action;
@@ -26,8 +28,33 @@ public final class Task {
         return statusText.asReadonly();
     }
 
-    TaskContext context() {
-        return statusText::set;
+    /** How much of the Task is done, from 0 to 1. Only meaningful if its Action reports Progress. */
+    public Signal<Double> progress() {
+        return progress.asReadonly();
+    }
+
+    /** What a Succeeded Task produced, or empty if its Action didn't say. */
+    public Signal<String> resultSummary() {
+        return resultSummary.asReadonly();
+    }
+
+    ProgressContext context() {
+        return new ProgressContext() {
+            @Override
+            public void setStatusText(String text) {
+                statusText.set(text);
+            }
+
+            @Override
+            public void setResultSummary(String text) {
+                resultSummary.set(text);
+            }
+
+            @Override
+            public void setProgress(double value) {
+                progress.set(Math.clamp(value, 0.0, 1.0));
+            }
+        };
     }
 
     void succeed() {

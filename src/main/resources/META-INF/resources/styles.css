@@ -34,8 +34,18 @@
   gap: 0.25rem;
 }
 
-.task-tray:empty {
+.task-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.task-rows:empty {
   display: none;
+}
+
+.task-tray-progress {
+  margin: 0;
 }
 
 .task-row {
@@ -47,8 +57,18 @@
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
 }
 
-.task-status-text {
+.task-status-text,
+.task-result-summary,
+.task-progress {
   grid-column: 1 / -1;
+}
+
+.task-progress {
+  margin: 0.25rem 0 0;
+}
+
+.task-status-text,
+.task-result-summary {
   font-size: 0.875rem;
   opacity: 0.75;
 }

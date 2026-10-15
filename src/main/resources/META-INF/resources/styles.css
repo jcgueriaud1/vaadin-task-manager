@@ -81,7 +81,18 @@
   opacity: 0.75;
 }
 
-.task-dismiss {
+.task-error-message {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  color: var(--aura-red, #c62828);
+}
+
+.task-error-message:empty {
+  display: none;
+}
+
+.task-dismiss,
+.task-cancel {
   margin: 0;
 }
 

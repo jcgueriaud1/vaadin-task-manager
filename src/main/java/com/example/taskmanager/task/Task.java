@@ -1,5 +1,7 @@
 package com.example.taskmanager.task;
 
+import java.util.concurrent.CancellationException;
+
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
@@ -11,7 +13,9 @@ public final class Task {
     private final ValueSignal<String> statusText = new ValueSignal<>("");
     private final ValueSignal<Double> progress = new ValueSignal<>(0.0);
     private final ValueSignal<String> resultSummary = new ValueSignal<>("");
+    private final ValueSignal<String> errorMessage = new ValueSignal<>("");
     private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
+    private volatile boolean cancelled;
 
     Task(AsyncAction<?> action) {
         this.action = action;
@@ -39,32 +43,68 @@ public final class Task {
         return resultSummary.asReadonly();
     }
 
+    /** The message of the exception a Failed Task ended with, empty otherwise. */
+    public Signal<String> errorMessage() {
+        return errorMessage.asReadonly();
+    }
+
     /** Whether the user has removed this Finished Task from the tray. */
     public Signal<Boolean> dismissed() {
         return dismissed.asReadonly();
+    }
+
+    /**
+     * Asks the Task to stop. The work stops the next time it reports, and the
+     * Task then becomes Cancelled.
+     */
+    public void cancel() {
+        cancelled = true;
     }
 
     ProgressContext context() {
         return new ProgressContext() {
             @Override
             public void setStatusText(String text) {
+                throwIfCancelled();
                 statusText.set(text);
             }
 
             @Override
             public void setResultSummary(String text) {
+                throwIfCancelled();
                 resultSummary.set(text);
             }
 
             @Override
             public void setProgress(double value) {
+                throwIfCancelled();
                 progress.set(Math.clamp(value, 0.0, 1.0));
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return cancelled;
             }
         };
     }
 
+    private void throwIfCancelled() {
+        if (cancelled) {
+            throw new CancellationException();
+        }
+    }
+
     void succeed() {
         state.set(TaskState.SUCCEEDED);
+    }
+
+    void fail(String message) {
+        errorMessage.set(message);
+        state.set(TaskState.FAILED);
+    }
+
+    void markCancelled() {
+        state.set(TaskState.CANCELLED);
     }
 
     void dismiss() {

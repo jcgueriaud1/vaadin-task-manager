@@ -40,6 +40,9 @@ public class TestTaskConfig {
                     ctx.setProgress(1);
                     ctx.setResultSummary("3 CSV files");
                     return null;
+                }),
+                new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
+                    throw new IllegalStateException("Server unreachable");
                 })));
     }
 }

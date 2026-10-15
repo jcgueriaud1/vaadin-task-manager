@@ -83,6 +83,9 @@ public class TaskTray extends Div {
         Span statusText = new Span();
         statusText.addClassName("task-status-text");
         statusText.bindText(task.statusText());
+        Span errorMessage = new Span();
+        errorMessage.addClassName("task-error-message");
+        errorMessage.bindText(task.errorMessage());
         Span resultSummary = new Span();
         resultSummary.addClassName("task-result-summary");
         resultSummary.bindText(task.resultSummary());
@@ -92,7 +95,12 @@ public class TaskTray extends Div {
         dismiss.setAriaLabel("Dismiss " + task.action().name());
         dismiss.addClassName("task-dismiss");
         dismiss.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
-        Div row = new Div(name, state, dismiss, statusText, resultSummary, progress(task));
+        Button cancel = new Button("Cancel", e -> task.cancel());
+        cancel.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        cancel.setAriaLabel("Cancel " + task.action().name());
+        cancel.addClassName("task-cancel");
+        cancel.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        Div row = new Div(name, state, dismiss, cancel, statusText, errorMessage, resultSummary, progress(task));
         row.addClassName("task-row");
         return row;
     }

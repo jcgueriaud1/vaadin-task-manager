@@ -6,7 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import org.junit.jupiter.api.Test;
 
@@ -51,6 +55,88 @@ class AsyncActionTest {
         executor.resume();
         assertEquals("Sending emails", task.statusText().peek());
         assertEquals(TaskState.RUNNING, task.state().peek());
+    }
+
+    @Test
+    void cancelledTaskStopsAtItsNextStatusTextAndEndsCancelled() {
+        List<String> reachedSteps = new ArrayList<>();
+        var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+            ctx.setStatusText("Preparing recipients");
+            executor.pause();
+            ctx.setStatusText("Sending emails");
+            reachedSteps.add("Sending emails");
+            return null;
+        });
+        CompletableFuture<Object> future = action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        executor.runNext();
+
+        task.cancel();
+        executor.resume();
+
+        assertEquals(List.of(), reachedSteps);
+        assertEquals(TaskState.CANCELLED, task.state().peek());
+        assertEquals(1, taskList.tasks().peek().size());
+        assertTrue(future.isCompletedExceptionally());
+        assertThrows(CancellationException.class, future::join);
+    }
+
+    @Test
+    void workThatChecksIsCancelledCanStopQuietlyAndTheTaskStillEndsCancelled() {
+        List<Boolean> seen = new ArrayList<>();
+        var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+            seen.add(ctx.isCancelled());
+            executor.pause();
+            seen.add(ctx.isCancelled());
+            return "partial";
+        });
+        CompletableFuture<String> future = action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        executor.runNext();
+
+        task.cancel();
+        executor.resume();
+
+        assertEquals(List.of(false, true), seen);
+        assertEquals(TaskState.CANCELLED, task.state().peek());
+        assertThrows(CancellationException.class, future::join);
+        assertFalse(taskList.isRunning(action).peek());
+    }
+
+    @Test
+    void cancellingTheFutureCancelsTheTask() {
+        var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+            executor.pause();
+            ctx.setStatusText("Sending emails");
+            return null;
+        });
+        CompletableFuture<Object> future = action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        executor.runNext();
+
+        future.cancel(false);
+        executor.resume();
+
+        assertEquals("", task.statusText().peek());
+        assertEquals(TaskState.CANCELLED, task.state().peek());
+    }
+
+    @Test
+    void workThatThrowsMakesTheTaskFailedWithTheExceptionsMessage() {
+        var action = new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
+            throw new IllegalStateException("Server unreachable");
+        });
+        CompletableFuture<Object> future = action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        assertEquals("", task.errorMessage().peek());
+
+        executor.runAll();
+
+        assertEquals(TaskState.FAILED, task.state().peek());
+        assertEquals("Server unreachable", task.errorMessage().peek());
+        CompletionException thrown = assertThrows(CompletionException.class, future::join);
+        assertEquals("Server unreachable", thrown.getCause().getMessage());
+        assertFalse(taskList.isRunning(action).peek());
     }
 
     @Test

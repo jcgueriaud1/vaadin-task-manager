@@ -52,3 +52,18 @@
   font-size: 0.875rem;
   opacity: 0.75;
 }
+
+.task-error-message {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  color: var(--aura-red, #c62828);
+}
+
+.task-error-message:empty {
+  display: none;
+}
+
+.task-row vaadin-button {
+  grid-column: 1 / -1;
+  justify-self: end;
+}

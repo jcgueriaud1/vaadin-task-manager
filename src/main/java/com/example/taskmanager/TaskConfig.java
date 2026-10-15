@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,6 +42,17 @@ public class TaskConfig {
                     }
                     ctx.setStatusText("Sent to 1,240 subscribers");
                     return 1240;
+                }),
+                new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
+                    ctx.setStatusText("Connecting");
+                    sleep(1500);
+                    ctx.setStatusText("Downloading changes");
+                    sleep(2000);
+                    if (ThreadLocalRandom.current().nextBoolean()) {
+                        throw new IllegalStateException("Server unreachable: connection timed out");
+                    }
+                    ctx.setStatusText("Up to date");
+                    return null;
                 })));
     }
 

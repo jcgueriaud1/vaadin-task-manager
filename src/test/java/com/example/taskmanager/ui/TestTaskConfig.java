@@ -32,6 +32,9 @@ public class TestTaskConfig {
                     executor.pause();
                     return null;
                 }),
-                new AsyncAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> null)));
+                new AsyncAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> null),
+                new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
+                    throw new IllegalStateException("Server unreachable");
+                })));
     }
 }

@@ -71,6 +71,43 @@ class ActionsViewTest extends SpringBrowserlessTest {
         assertEquals("Start", newsletter.getText());
     }
 
+    @Test
+    void cancellingFromTheTrayEndsTheTaskCancelledAndFreesItsAction() {
+        Button newsletter = startButton("Send newsletter");
+        test(newsletter).click();
+        executor.runNext();
+        runPendingSignalsTasks();
+
+        test(cancelButton("Send newsletter")).click();
+        executor.resume();
+        runPendingSignalsTasks();
+
+        String tray = trayText();
+        assertTrue(tray.contains("Send newsletter"), tray);
+        assertTrue(tray.contains("Cancelled"), tray);
+        assertFalse(tray.contains("Sending emails"), tray);
+        assertFalse($(Button.class).withAriaLabel("Cancel Send newsletter").exists());
+        assertTrue(newsletter.isEnabled());
+    }
+
+    @Test
+    void aFailedTaskShowsItsErrorMessageInTheTray() {
+        Button sync = startButton("Sync with server");
+        test(sync).click();
+
+        executor.runAll();
+        runPendingSignalsTasks();
+
+        String tray = trayText();
+        assertTrue(tray.contains("Failed"), tray);
+        assertTrue(tray.contains("Server unreachable"), tray);
+        assertTrue(sync.isEnabled());
+    }
+
+    private Button cancelButton(String actionName) {
+        return $(Button.class).withAriaLabel("Cancel " + actionName).single();
+    }
+
     private Button startButton(String actionName) {
         return $(Button.class).withAriaLabel("Start " + actionName).single();
     }

@@ -1,5 +1,7 @@
 package com.example.taskmanager.task;
 
+import java.util.concurrent.CancellationException;
+
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
@@ -9,6 +11,8 @@ public final class Task {
     private final AsyncAction<?> action;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
+    private final ValueSignal<String> errorMessage = new ValueSignal<>("");
+    private volatile boolean cancelled;
 
     Task(AsyncAction<?> action) {
         this.action = action;
@@ -26,11 +30,46 @@ public final class Task {
         return statusText.asReadonly();
     }
 
+    /** The message of the exception a Failed Task ended with, empty otherwise. */
+    public Signal<String> errorMessage() {
+        return errorMessage.asReadonly();
+    }
+
+    /**
+     * Asks the Task to stop. The work stops the next time it reports, and the
+     * Task then becomes Cancelled.
+     */
+    public void cancel() {
+        cancelled = true;
+    }
+
     TaskContext context() {
-        return statusText::set;
+        return new TaskContext() {
+            @Override
+            public void setStatusText(String text) {
+                if (cancelled) {
+                    throw new CancellationException();
+                }
+                statusText.set(text);
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return cancelled;
+            }
+        };
     }
 
     void succeed() {
         state.set(TaskState.SUCCEEDED);
+    }
+
+    void fail(String message) {
+        errorMessage.set(message);
+        state.set(TaskState.FAILED);
+    }
+
+    void markCancelled() {
+        state.set(TaskState.CANCELLED);
     }
 }

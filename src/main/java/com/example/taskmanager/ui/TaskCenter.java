@@ -25,7 +25,11 @@ public class TaskCenter extends Div {
         addClassName("task-center");
         Button button = new Button(taskList.runningCount().map(String::valueOf));
         button.setAriaLabel("Task center");
-        add(button);
+        Span unseen = new Span(taskList.unseenCount().map(String::valueOf));
+        unseen.addClassName("unseen-badge");
+        unseen.getElement().setAttribute("aria-label", "Unseen Tasks");
+        unseen.bindVisible(taskList.unseenCount().map(count -> count > 0));
+        add(button, unseen);
 
         Div rows = new Div();
         rows.addClassName("task-center-rows");

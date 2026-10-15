@@ -43,6 +43,20 @@ public class TestTaskConfig {
                 }),
                 new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
                     throw new IllegalStateException("Server unreachable");
+                }),
+                new AsyncProgressAction<>("Import data", BlockingMode.BLOCKING, ctx -> {
+                    ctx.setStatusText("Reading file 1");
+                    ctx.setProgress(0.25);
+                    executor.pause();
+                    ctx.setStatusText("Reading file 2");
+                    ctx.setProgress(0.75);
+                    executor.pause();
+                    return null;
+                }),
+                new AsyncAction<>("Restore backup", BlockingMode.BLOCKING, ctx -> {
+                    ctx.setStatusText("Checking backup");
+                    executor.pause();
+                    throw new IllegalStateException("Backup is corrupt");
                 })));
     }
 }

@@ -50,6 +50,18 @@ public class AsyncAction<T> {
 
     /** Starts a new Task of this Action in the given Task list. */
     public CompletableFuture<T> start(TaskList taskList) {
+        return run(taskList).future();
+    }
+
+    /** Starts a new Task of this Action in the given Task list and returns that Task. */
+    public Task startTask(TaskList taskList) {
+        return run(taskList).task();
+    }
+
+    private record Started<T>(Task task, CompletableFuture<T> future) {
+    }
+
+    private Started<T> run(TaskList taskList) {
         Task task = taskList.add(this);
         CompletableFuture<T> future = new CompletableFuture<>();
         future.whenComplete((value, error) -> {
@@ -75,6 +87,6 @@ public class AsyncAction<T> {
                 future.completeExceptionally(e);
             }
         });
-        return future;
+        return new Started<>(task, future);
     }
 }

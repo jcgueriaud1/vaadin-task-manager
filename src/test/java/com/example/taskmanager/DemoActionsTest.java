@@ -19,4 +19,14 @@ class DemoActionsTest {
         assertEquals(BlockingMode.NON_BLOCKING, report.blockingMode());
         assertTrue(report.reportsProgress());
     }
+
+    @Test
+    void theActionsPageOffersImportDataAsABlockingActionWithProgress() {
+        AsyncAction<?> importData = new TaskConfig().demoActions().actions().stream()
+                .filter(action -> action.name().equals("Import data"))
+                .findFirst().orElseThrow();
+
+        assertEquals(BlockingMode.BLOCKING, importData.blockingMode());
+        assertTrue(importData.reportsProgress());
+    }
 }

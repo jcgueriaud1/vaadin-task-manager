@@ -9,6 +9,8 @@ Code lives in `com.example.taskmanager`.
 
 ## Agent skills
 
+The skills from `mattpocock/skills` are vendored in `.claude/skills/` (see its README).
+
 ### Issue tracker
 
 Issues are tracked in GitHub Issues on `jcgueriaud1/vaadin-task-manager`. See `docs/agents/issue-tracker.md`.

@@ -1,13 +1,54 @@
-/* Example: CSS class name to center align the content . */
-.centered-content {
-  margin: 0 auto;
-  max-width: 250px;
+.app-title {
+  font-size: 1.125rem;
+  margin: 0 1rem;
 }
 
-/* Example: the style is applied only to the textfields which have the `bordered` class name. */
-vaadin-text-field.bordered::part(input-field) {
-  box-shadow: inset 0 0 0 1px var(--lumo-contrast-30pct);
-  background-color: var(--lumo-base-color);
+.actions-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+  padding: 1rem;
 }
 
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 0.5rem;
+}
 
+.action-card h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.task-tray {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: 20rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.task-tray:empty {
+  display: none;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--aura-surface-color, Canvas);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+
+.task-status-text {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+  opacity: 0.75;
+}

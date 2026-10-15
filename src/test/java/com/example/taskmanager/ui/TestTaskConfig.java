@@ -33,11 +33,12 @@ public class TestTaskConfig {
                     executor.pause();
                     return null;
                 }),
-                new AsyncProgressAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> {
+                new AsyncAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> null),
+                new AsyncProgressAction<>("Export data", BlockingMode.NON_BLOCKING, ctx -> {
                     ctx.setProgress(0.5);
                     executor.pause();
                     ctx.setProgress(1);
-                    ctx.setResultSummary("5 PDF files");
+                    ctx.setResultSummary("3 CSV files");
                     return null;
                 })));
     }

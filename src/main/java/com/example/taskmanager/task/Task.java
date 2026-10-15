@@ -11,6 +11,7 @@ public final class Task {
     private final ValueSignal<String> statusText = new ValueSignal<>("");
     private final ValueSignal<Double> progress = new ValueSignal<>(0.0);
     private final ValueSignal<String> resultSummary = new ValueSignal<>("");
+    private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
 
     Task(AsyncAction<?> action) {
         this.action = action;
@@ -38,6 +39,11 @@ public final class Task {
         return resultSummary.asReadonly();
     }
 
+    /** Whether the user has removed this Finished Task from the tray. */
+    public Signal<Boolean> dismissed() {
+        return dismissed.asReadonly();
+    }
+
     ProgressContext context() {
         return new ProgressContext() {
             @Override
@@ -59,5 +65,9 @@ public final class Task {
 
     void succeed() {
         state.set(TaskState.SUCCEEDED);
+    }
+
+    void dismiss() {
+        dismissed.set(true);
     }
 }

@@ -12,9 +12,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import com.example.taskmanager.task.TestExecutor;
+import com.vaadin.browserless.ComponentQuery;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.popover.Popover;
+import com.vaadin.flow.component.popover.PopoverTester;
 import com.vaadin.flow.component.progressbar.ProgressBar;
 
 @SpringBootTest
@@ -35,8 +39,72 @@ class TaskTrayTest extends SpringBrowserlessTest {
     }
 
     @Test
+    void headlineSaysWhatIsRunningAndWhatIsFinished() {
+        test(startButton("Generate report")).click();
+        test(startButton("Send newsletter")).click();
+        runPendingSignalsTasks();
+        assertEquals("2 tasks running", headline());
+
+        executor.runNext();
+        runPendingSignalsTasks();
+        assertEquals("1 task running · 1 task finished", headline());
+
+        executor.runAll();
+        runPendingSignalsTasks();
+        assertEquals("2 tasks finished", headline());
+    }
+
+    @Test
+    void collapsingHidesTheRowsButKeepsTheHeadline() {
+        test(startButton("Generate report")).click();
+        runPendingSignalsTasks();
+        assertTrue(rowsShown());
+
+        test($(Button.class).from(tray()).withAriaLabel("Collapse tray").single()).click();
+        assertFalse(rowsShown());
+        assertEquals("1 task running", headline());
+
+        test($(Button.class).from(tray()).withAriaLabel("Expand tray").single()).click();
+        assertTrue(rowsShown());
+    }
+
+    @Test
+    void dismissRemovesAFinishedTaskFromTheTrayButNotFromTheTaskList() {
+        test(startButton("Generate report")).click();
+        executor.runAll();
+        test(startButton("Send newsletter")).click();
+        runPendingSignalsTasks();
+        assertFalse(dismissButton("Send newsletter").exists(), "Running Tasks can't be Dismissed");
+
+        test(dismissButton("Generate report").single()).click();
+        runPendingSignalsTasks();
+
+        assertFalse(tray().getElement().getTextRecursively().contains("Generate report"));
+        assertEquals("1 task running", headline());
+        PopoverTester.forTarget($(Button.class).withAriaLabel("Task center").single()).clickTarget();
+        assertTrue($(Popover.class).single().getElement().getTextRecursively().contains("Generate report"));
+    }
+
+    @Test
+    void trayHidesWhenNothingIsRunningAndEveryFinishedTaskIsDismissed() {
+        assertFalse(trayShown());
+
+        test(startButton("Generate report")).click();
+        runPendingSignalsTasks();
+        assertTrue(trayShown());
+
+        executor.runAll();
+        runPendingSignalsTasks();
+        assertTrue(trayShown(), "an undismissed Finished Task keeps the tray up");
+
+        test(dismissButton("Generate report").single()).click();
+        runPendingSignalsTasks();
+        assertFalse(trayShown());
+    }
+
+    @Test
     void aTaskWithoutProgressShowsAnIndeterminateIndicator() {
-        start("Send newsletter");
+        test(startButton("Send newsletter")).click();
         runPendingSignalsTasks();
 
         ProgressBar indicator = rowIndicator("Send newsletter");
@@ -48,30 +116,50 @@ class TaskTrayTest extends SpringBrowserlessTest {
     void rowIndicatorAndOverallBarFollowTheProgressUntilTheResultSummaryShows() {
         assertFalse(overallBarShown());
 
-        start("Generate report");
+        test(startButton("Export data")).click();
         runPendingSignalsTasks();
-        assertFalse(rowIndicator("Generate report").isIndeterminate());
-        assertEquals(0.0, rowIndicator("Generate report").getValue());
+        assertFalse(rowIndicator("Export data").isIndeterminate());
+        assertEquals(0.0, rowIndicator("Export data").getValue());
         assertTrue(overallBarShown());
         assertEquals(0.0, overallBar().getValue());
 
         executor.runNext();
         runPendingSignalsTasks();
-        assertEquals(0.5, rowIndicator("Generate report").getValue());
+        assertEquals(0.5, rowIndicator("Export data").getValue());
         assertEquals(0.5, overallBar().getValue());
-        assertFalse(row("Generate report").getElement().getTextRecursively().contains("5 PDF files"));
+        assertFalse(row("Export data").getElement().getTextRecursively().contains("3 CSV files"));
 
         executor.resume();
         runPendingSignalsTasks();
-        assertFalse($(ProgressBar.class).from(row("Generate report")).exists());
+        assertFalse($(ProgressBar.class).from(row("Export data")).exists());
         assertFalse(overallBarShown());
-        String rowText = row("Generate report").getElement().getTextRecursively();
+        String rowText = row("Export data").getElement().getTextRecursively();
         assertTrue(rowText.contains("Succeeded"), rowText);
-        assertTrue(rowText.contains("5 PDF files"), rowText);
+        assertTrue(rowText.contains("3 CSV files"), rowText);
     }
 
-    private void start(String actionName) {
-        test($(Button.class).withAriaLabel("Start " + actionName).single()).click();
+    private boolean trayShown() {
+        return $(TaskTray.class).exists();
+    }
+
+    private ComponentQuery<Button> dismissButton(String actionName) {
+        return $(Button.class).from(tray()).withAriaLabel("Dismiss " + actionName);
+    }
+
+    private boolean rowsShown() {
+        return $(Div.class).from(tray()).withClassName("task-row").exists();
+    }
+
+    private String headline() {
+        return $(Span.class).from(tray()).withClassName("task-tray-headline").single().getText();
+    }
+
+    private TaskTray tray() {
+        return $(TaskTray.class).single();
+    }
+
+    private Button startButton(String actionName) {
+        return $(Button.class).withAriaLabel("Start " + actionName).single();
     }
 
     private Div row(String actionName) {

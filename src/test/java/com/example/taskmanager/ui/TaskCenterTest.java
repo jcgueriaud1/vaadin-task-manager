@@ -82,6 +82,13 @@ class TaskCenterTest extends SpringBrowserlessTest {
                 "most recent first");
     }
 
+    @Test
+    void viewAllLandsOnTheBackgroundTasksPage() {
+        Anchor viewAll = $(Anchor.class).from(openPopover()).withText("View all").single();
+
+        assertTrue(navigate(viewAll.getHref(), TasksView.class) instanceof TasksView);
+    }
+
     private Popover openPopover() {
         PopoverTester tester = PopoverTester.forTarget(taskCenterButton());
         tester.clickTarget();

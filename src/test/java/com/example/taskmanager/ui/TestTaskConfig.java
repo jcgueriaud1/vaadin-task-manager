@@ -1,5 +1,6 @@
 package com.example.taskmanager.ui;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.boot.test.context.TestConfiguration;
@@ -10,9 +11,10 @@ import com.example.taskmanager.DemoActions;
 import com.example.taskmanager.task.AsyncAction;
 import com.example.taskmanager.task.AsyncProgressAction;
 import com.example.taskmanager.task.BlockingMode;
+import com.example.taskmanager.task.TestClock;
 import com.example.taskmanager.task.TestExecutor;
 
-/** Replaces the Executor and the demo Actions with ones the test drives. */
+/** Replaces the Executor, the Clock and the demo Actions with ones the test drives. */
 @TestConfiguration
 public class TestTaskConfig {
 
@@ -20,6 +22,12 @@ public class TestTaskConfig {
     @Primary
     public TestExecutor testExecutor() {
         return new TestExecutor();
+    }
+
+    @Bean
+    @Primary
+    public TestClock testClock() {
+        return new TestClock(Instant.parse("2026-10-15T09:00:00Z"));
     }
 
     @Bean

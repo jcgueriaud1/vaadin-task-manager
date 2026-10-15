@@ -1,5 +1,9 @@
 package com.example.taskmanager.task;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 
 import com.vaadin.flow.signals.Signal;
@@ -8,6 +12,9 @@ import com.vaadin.flow.signals.local.ValueSignal;
 /** One run of an Action. Its fixed fields never change; the rest are signals. */
 public final class Task {
 
+    private static final double MIN_PROGRESS_FOR_ESTIMATE = 0.05;
+
+    private final long id;
     private final AsyncAction<?> action;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
@@ -15,14 +22,48 @@ public final class Task {
     private final ValueSignal<String> resultSummary = new ValueSignal<>("");
     private final ValueSignal<String> errorMessage = new ValueSignal<>("");
     private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
+    private final Clock clock;
+    private final Instant startedAt;
+    private volatile Instant finishedAt;
     private volatile boolean cancelled;
 
-    Task(AsyncAction<?> action) {
+    Task(long id, AsyncAction<?> action, Clock clock) {
+        this.id = id;
         this.action = action;
+        this.clock = clock;
+        this.startedAt = clock.instant();
+    }
+
+    /** Identifies the Task within its Task list, for example in a URL. */
+    public long id() {
+        return id;
     }
 
     public AsyncAction<?> action() {
         return action;
+    }
+
+    public Instant startedAt() {
+        return startedAt;
+    }
+
+    /** How long a Running Task has run until now, or how long a Finished Task took. */
+    public Duration elapsed(Instant now) {
+        Instant end = finishedAt;
+        return Duration.between(startedAt, end != null ? end : now);
+    }
+
+    /**
+     * A straight-line estimate of how long a Running Task still needs, from its
+     * Progress so far. Empty unless its Action reports Progress and it is above 5%.
+     */
+    public Optional<Duration> timeLeft(Instant now) {
+        double done = progress.peek();
+        if (!action.reportsProgress() || state.peek() != TaskState.RUNNING || done <= MIN_PROGRESS_FOR_ESTIMATE) {
+            return Optional.empty();
+        }
+        long elapsedMillis = elapsed(now).toMillis();
+        return Optional.of(Duration.ofMillis(Math.round(elapsedMillis * (1 - done) / done)));
     }
 
     public Signal<TaskState> state() {
@@ -95,15 +136,18 @@ public final class Task {
     }
 
     void succeed() {
+        finishedAt = clock.instant();
         state.set(TaskState.SUCCEEDED);
     }
 
     void fail(String message) {
+        finishedAt = clock.instant();
         errorMessage.set(message);
         state.set(TaskState.FAILED);
     }
 
     void markCancelled() {
+        finishedAt = clock.instant();
         state.set(TaskState.CANCELLED);
     }
 

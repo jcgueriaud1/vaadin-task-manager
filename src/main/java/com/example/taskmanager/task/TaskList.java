@@ -1,6 +1,7 @@
 package com.example.taskmanager.task;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -18,6 +19,7 @@ public class TaskList {
     private final Executor executor;
     private final Clock clock;
     private final ListSignal<Task> tasks = new ListSignal<>();
+    private final List<Tab> tabs = new ArrayList<>();
     private long nextId = 1;
 
     public TaskList(Executor executor) {
@@ -102,6 +104,53 @@ public class TaskList {
                     .average();
             return average.isPresent() ? Optional.of(average.getAsDouble()) : Optional.empty();
         });
+    }
+
+    /** How many Tasks in this list are Unseen. */
+    public Signal<Integer> unseenCount() {
+        return Signal.computed(() -> (int) tasks.getValues()
+                .filter(task -> task.unseen().get())
+                .count());
+    }
+
+    /** Registers a browser tab of this session. It starts visible. */
+    public synchronized Tab openTab() {
+        Tab tab = new Tab();
+        tabs.add(tab);
+        return tab;
+    }
+
+    /** A browser tab of the session, which reports whether it is visible. */
+    public final class Tab {
+
+        private boolean visible = true;
+
+        private Tab() {
+        }
+
+        /** Reports whether the tab is visible, focused or not. */
+        public void setVisible(boolean visible) {
+            synchronized (TaskList.this) {
+                this.visible = visible;
+                if (visible) {
+                    tasks.peekValues().forEach(task -> task.markUnseen(false));
+                }
+            }
+        }
+
+        /** The tab is gone; it no longer counts as visible. */
+        public void close() {
+            synchronized (TaskList.this) {
+                tabs.remove(this);
+            }
+        }
+    }
+
+    /** Called when a Task finishes: it is Unseen if no tab of the session is visible. */
+    synchronized void finished(Task task) {
+        if (tabs.stream().noneMatch(tab -> tab.visible)) {
+            task.markUnseen(true);
+        }
     }
 
     /**

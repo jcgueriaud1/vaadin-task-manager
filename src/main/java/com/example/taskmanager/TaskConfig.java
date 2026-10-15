@@ -1,5 +1,6 @@
 package com.example.taskmanager;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -24,11 +25,17 @@ public class TaskConfig {
         return Executors.newVirtualThreadPerTaskExecutor();
     }
 
+    /** Where Tasks take their start and finish times from. Tests replace this bean. */
+    @Bean
+    public Clock clock() {
+        return Clock.systemDefaultZone();
+    }
+
     /** The Task list of the current session, shared by all its browser tabs (ADR 0001). */
     @Bean
     @VaadinSessionScope
-    public TaskList taskList(Executor executor) {
-        return new TaskList(executor);
+    public TaskList taskList(Executor executor, Clock clock) {
+        return new TaskList(executor, clock);
     }
 
     @Bean

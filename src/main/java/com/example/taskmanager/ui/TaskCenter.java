@@ -11,7 +11,6 @@ import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.popover.Popover;
-import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.signals.Signal;
 
 /**
@@ -65,11 +64,7 @@ public class TaskCenter extends Div {
         Span statusText = new Span();
         statusText.addClassName("task-status-text");
         statusText.bindText(task.statusText());
-        // Progress isn't reported yet, so Running Tasks show as indeterminate
-        ProgressBar progress = new ProgressBar();
-        progress.setIndeterminate(true);
-        progress.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
-        Div row = new Div(name, state, statusText, progress);
+        Div row = new Div(name, state, statusText, TaskTray.progress(task));
         row.addClassName("task-center-row");
         return row;
     }

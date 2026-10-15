@@ -1,6 +1,8 @@
 package com.example.taskmanager.task;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.concurrent.Executor;
 
 import com.vaadin.flow.signals.Signal;
@@ -50,6 +52,20 @@ public class TaskList {
             throw new IllegalStateException("A Running Task cannot be Dismissed");
         }
         task.dismiss();
+    }
+
+    /**
+     * The average Progress of the Running Tasks that report Progress, or empty if
+     * there are none.
+     */
+    public Signal<Optional<Double>> overallProgress() {
+        return Signal.computed(() -> {
+            OptionalDouble average = tasks.getValues()
+                    .filter(task -> task.action().reportsProgress() && task.state().get() == TaskState.RUNNING)
+                    .mapToDouble(task -> task.progress().get())
+                    .average();
+            return average.isPresent() ? Optional.of(average.getAsDouble()) : Optional.empty();
+        });
     }
 
     /**

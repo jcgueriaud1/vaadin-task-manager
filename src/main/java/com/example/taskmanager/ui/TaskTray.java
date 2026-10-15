@@ -2,6 +2,7 @@ package com.example.taskmanager.ui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
@@ -10,6 +11,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
@@ -41,8 +43,17 @@ public class TaskTray extends Div {
             });
         });
         rows.bindVisible(Signal.not(collapsed));
-        add(header, rows);
+        add(header, overallProgress(taskList.overallProgress()), rows);
         bindVisible(taskList.trayTasks().map(tasks -> !tasks.isEmpty()));
+    }
+
+    /** The average Progress of Running Tasks that report Progress, hidden when there are none. */
+    private static ProgressBar overallProgress(Signal<Optional<Double>> overall) {
+        ProgressBar bar = new ProgressBar();
+        bar.addClassName("task-tray-progress");
+        bar.bindValue(overall.map(progress -> progress.orElse(0.0)));
+        bar.bindVisible(overall.map(Optional::isPresent));
+        return bar;
     }
 
     /** For example "1 task running · 2 tasks finished", or "" when there's nothing. */
@@ -72,14 +83,31 @@ public class TaskTray extends Div {
         Span statusText = new Span();
         statusText.addClassName("task-status-text");
         statusText.bindText(task.statusText());
+        Span resultSummary = new Span();
+        resultSummary.addClassName("task-result-summary");
+        resultSummary.bindText(task.resultSummary());
+        resultSummary.bindVisible(task.state().map(s -> s == TaskState.SUCCEEDED));
         Button dismiss = new Button("✕", e -> taskList.dismiss(task));
         dismiss.addThemeVariants(ButtonVariant.TERTIARY);
         dismiss.setAriaLabel("Dismiss " + task.action().name());
         dismiss.addClassName("task-dismiss");
         dismiss.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
-        Div row = new Div(name, state, dismiss, statusText);
+        Div row = new Div(name, state, dismiss, statusText, resultSummary, progress(task));
         row.addClassName("task-row");
         return row;
+    }
+
+    /** Determinate if the Task's Action reports Progress, indeterminate otherwise; shown while Running. */
+    static ProgressBar progress(Task task) {
+        ProgressBar bar = new ProgressBar();
+        bar.addClassName("task-progress");
+        if (task.action().reportsProgress()) {
+            bar.bindValue(task.progress());
+        } else {
+            bar.setIndeterminate(true);
+        }
+        bar.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        return bar;
     }
 
     static String label(TaskState state) {

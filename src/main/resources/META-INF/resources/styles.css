@@ -51,6 +51,10 @@
   gap: 0.25rem;
 }
 
+.task-tray-progress {
+  margin: 0;
+}
+
 .task-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -61,8 +65,18 @@
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
 }
 
-.task-status-text {
+.task-status-text,
+.task-result-summary,
+.task-progress {
   grid-column: 1 / -1;
+}
+
+.task-progress {
+  margin: 0.25rem 0 0;
+}
+
+.task-status-text,
+.task-result-summary {
   font-size: 0.875rem;
   opacity: 0.75;
 }

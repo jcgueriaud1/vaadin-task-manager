@@ -19,6 +19,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverTester;
+import com.vaadin.flow.component.progressbar.ProgressBar;
 
 @SpringBootTest
 @Import(TestTaskConfig.class)
@@ -101,6 +102,42 @@ class TaskTrayTest extends SpringBrowserlessTest {
         assertFalse(trayShown());
     }
 
+    @Test
+    void aTaskWithoutProgressShowsAnIndeterminateIndicator() {
+        test(startButton("Send newsletter")).click();
+        runPendingSignalsTasks();
+
+        ProgressBar indicator = rowIndicator("Send newsletter");
+        assertTrue(indicator.isIndeterminate());
+        assertFalse(overallBarShown());
+    }
+
+    @Test
+    void rowIndicatorAndOverallBarFollowTheProgressUntilTheResultSummaryShows() {
+        assertFalse(overallBarShown());
+
+        test(startButton("Export data")).click();
+        runPendingSignalsTasks();
+        assertFalse(rowIndicator("Export data").isIndeterminate());
+        assertEquals(0.0, rowIndicator("Export data").getValue());
+        assertTrue(overallBarShown());
+        assertEquals(0.0, overallBar().getValue());
+
+        executor.runNext();
+        runPendingSignalsTasks();
+        assertEquals(0.5, rowIndicator("Export data").getValue());
+        assertEquals(0.5, overallBar().getValue());
+        assertFalse(row("Export data").getElement().getTextRecursively().contains("3 CSV files"));
+
+        executor.resume();
+        runPendingSignalsTasks();
+        assertFalse($(ProgressBar.class).from(row("Export data")).exists());
+        assertFalse(overallBarShown());
+        String rowText = row("Export data").getElement().getTextRecursively();
+        assertTrue(rowText.contains("Succeeded"), rowText);
+        assertTrue(rowText.contains("3 CSV files"), rowText);
+    }
+
     private boolean trayShown() {
         return $(TaskTray.class).exists();
     }
@@ -123,5 +160,23 @@ class TaskTrayTest extends SpringBrowserlessTest {
 
     private Button startButton(String actionName) {
         return $(Button.class).withAriaLabel("Start " + actionName).single();
+    }
+
+    private Div row(String actionName) {
+        return $(Div.class).withClassName("task-row")
+                .withCondition(row -> row.getElement().getTextRecursively().contains(actionName)).single();
+    }
+
+    private ProgressBar rowIndicator(String actionName) {
+        return $(ProgressBar.class).from(row(actionName)).single();
+    }
+
+    /** Hidden components aren't found by queries. */
+    private boolean overallBarShown() {
+        return $(ProgressBar.class).withClassName("task-tray-progress").exists();
+    }
+
+    private ProgressBar overallBar() {
+        return $(ProgressBar.class).withClassName("task-tray-progress").single();
     }
 }

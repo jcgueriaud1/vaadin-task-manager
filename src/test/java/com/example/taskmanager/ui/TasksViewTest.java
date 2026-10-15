@@ -13,8 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 
+import com.example.taskmanager.task.Task;
+import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TestClock;
 import com.example.taskmanager.task.TestExecutor;
 import com.vaadin.browserless.ComponentQuery;
@@ -41,6 +44,9 @@ class TasksViewTest extends SpringBrowserlessTest {
 
     @Autowired
     private TestClock clock;
+
+    @Autowired
+    private ApplicationContext context;
 
     @BeforeEach
     void startFromTheActionsPage() {
@@ -151,6 +157,38 @@ class TasksViewTest extends SpringBrowserlessTest {
         runPendingSignalsTasks();
 
         assertEquals("Cancelled", detail("task-state"));
+    }
+
+    @Test
+    void selectingATaskPutsItInTheUrl() {
+        start("Generate report");
+        executor.runAll();
+        navigate(TasksView.class);
+        selectTab("Succeeded");
+
+        select("Generate report");
+
+        Task task = taskList().tasks().peekValues().findFirst().orElseThrow();
+        assertEquals("tasks/" + task.id(), UI.getCurrent().getActiveViewLocation().getPath());
+    }
+
+    @Test
+    void openingTheUrlOfATaskSelectsItUnderItsFilter() {
+        start("Generate report");
+        executor.runAll();
+        start("Sync with server");
+        executor.runAll();
+        Task failed = taskList().tasks().peekValues().toList().get(1);
+
+        navigate("tasks/" + failed.id(), TasksView.class);
+        runPendingSignalsTasks();
+
+        assertEquals("Sync with server", $(H2.class).from(detailPane()).single().getText());
+        assertEquals(List.of("Sync with server"), listedTaskNames());
+    }
+
+    private TaskList taskList() {
+        return context.getBean(TaskList.class);
     }
 
     private void start(String actionName) {

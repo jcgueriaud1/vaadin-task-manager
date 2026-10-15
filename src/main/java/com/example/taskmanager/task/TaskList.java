@@ -18,6 +18,7 @@ public class TaskList {
     private final Executor executor;
     private final Clock clock;
     private final ListSignal<Task> tasks = new ListSignal<>();
+    private long nextId = 1;
 
     public TaskList(Executor executor) {
         this(executor, Clock.systemDefaultZone());
@@ -35,6 +36,11 @@ public class TaskList {
 
     Executor executor() {
         return executor;
+    }
+
+    /** The Task with the given id, if it is still in this list. */
+    public Optional<Task> find(long id) {
+        return tasks.peekValues().filter(task -> task.id() == id).findFirst();
     }
 
     /** Whether the given Action has a Running Task in this list. */
@@ -116,7 +122,7 @@ public class TaskList {
                     .orElseThrow(() -> new IllegalStateException(MAX_TASKS + " Tasks are already Running"));
             tasks.remove(oldestFinished);
         }
-        Task task = new Task(action, clock);
+        Task task = new Task(nextId++, action, clock);
         tasks.insertLast(task);
         return task;
     }

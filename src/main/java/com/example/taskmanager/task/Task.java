@@ -14,6 +14,7 @@ public final class Task {
 
     private static final double MIN_PROGRESS_FOR_ESTIMATE = 0.05;
 
+    private final long id;
     private final AsyncAction<?> action;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
@@ -26,10 +27,16 @@ public final class Task {
     private volatile Instant finishedAt;
     private volatile boolean cancelled;
 
-    Task(AsyncAction<?> action, Clock clock) {
+    Task(long id, AsyncAction<?> action, Clock clock) {
+        this.id = id;
         this.action = action;
         this.clock = clock;
         this.startedAt = clock.instant();
+    }
+
+    /** Identifies the Task within its Task list, for example in a URL. */
+    public long id() {
+        return id;
     }
 
     public AsyncAction<?> action() {

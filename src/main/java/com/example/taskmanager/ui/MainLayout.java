@@ -10,7 +10,7 @@ public class MainLayout extends AppLayout {
     public MainLayout(TaskList taskList) {
         H1 title = new H1("Task Manager");
         title.addClassName("app-title");
-        addToNavbar(title);
+        addToNavbar(title, new TaskCenter(taskList));
         getElement().appendChild(new TaskTray(taskList).getElement());
     }
 }

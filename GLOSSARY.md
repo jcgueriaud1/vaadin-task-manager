@@ -7,7 +7,7 @@ A demo of running long operations from a Vaadin UI. Users start them, follow the
 ### Actions and Tasks
 
 **Action**:
-Something the user can start, defined once with a name. It says whether it is blocking and whether it reports progress.
+Something the user can start, defined once with a name. It says whether it is blocking and whether it reports progress. An Action has at most one Running Task per session.
 _Avoid_: Job, operation, task (for the definition)
 
 **Task**:
@@ -44,6 +44,14 @@ _Avoid_: Percentage, completion
 A short line that the Action updates as it goes, saying what the Task is doing now. For example "Step 2: compressing".
 _Avoid_: Message, step, label
 
+**Result summary**:
+An optional short text a Succeeded Task ends with, describing what it produced. For example "5 PDF files".
+_Avoid_: Result, output
+
+**Retry**:
+Starting a new Task of the same Action from a Failed or Cancelled Task. The old Task stays as it was.
+_Avoid_: Rerun, restart
+
 ### Where Tasks live
 
 **Task list**:
@@ -57,3 +65,7 @@ _Avoid_: Log, archive
 **Unseen**:
 A Finished Task the user hasn't looked at yet, because no tab of the session was visible when it finished. It stops being Unseen as soon as any tab of the session is visible.
 _Avoid_: Unread, new, missed
+
+**Dismissed**:
+A Finished Task the user has removed from the tray. It is still in the Task history.
+_Avoid_: Cleared, hidden, closed

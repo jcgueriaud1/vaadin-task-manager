@@ -2,6 +2,8 @@ package com.example.taskmanager.ui;
 
 import com.example.taskmanager.DemoActions;
 import com.example.taskmanager.task.AsyncAction;
+import com.example.taskmanager.task.BlockingMode;
+import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
@@ -23,7 +25,12 @@ public class ActionsView extends Div {
     private static Div card(AsyncAction<?> action, TaskList taskList) {
         Signal<Boolean> running = taskList.isRunning(action);
         Button start = new Button(running.map(r -> r ? action.name() + " running…" : "Start"));
-        start.addClickListener(e -> action.start(taskList));
+        start.addClickListener(e -> {
+            Task task = action.startTask(taskList);
+            if (action.blockingMode() == BlockingMode.BLOCKING) {
+                new BlockingTaskDialog(task).open();
+            }
+        });
         start.setAriaLabel("Start " + action.name());
         start.bindEnabled(Signal.not(running));
         Div card = new Div(new H2(action.name()), start);

@@ -69,6 +69,17 @@ public class TaskConfig {
                     ctx.setStatusText("");
                     ctx.setResultSummary("Up to date");
                     return null;
+                }),
+                new AsyncProgressAction<>("Import data", BlockingMode.BLOCKING, ctx -> {
+                    int files = 8;
+                    for (int file = 1; file <= files; file++) {
+                        ctx.setStatusText("Importing file " + file + " of " + files);
+                        sleep(600);
+                        ctx.setProgress((double) file / files);
+                    }
+                    ctx.setStatusText("");
+                    ctx.setResultSummary("2,480 records");
+                    return 2480;
                 })));
     }
 

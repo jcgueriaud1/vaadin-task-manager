@@ -10,6 +10,13 @@ public interface TaskContext {
      */
     void setStatusText(String statusText);
 
+    /**
+     * Sets the short text a Succeeded Task ends with, describing what it produced.
+     *
+     * @throws java.util.concurrent.CancellationException if the Task was cancelled
+     */
+    void setResultSummary(String resultSummary);
+
     /** Whether the user asked the Task to stop, for work that reports rarely. */
     boolean isCancelled();
 }

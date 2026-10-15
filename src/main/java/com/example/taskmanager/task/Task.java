@@ -11,7 +11,10 @@ public final class Task {
     private final AsyncAction<?> action;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
+    private final ValueSignal<Double> progress = new ValueSignal<>(0.0);
+    private final ValueSignal<String> resultSummary = new ValueSignal<>("");
     private final ValueSignal<String> errorMessage = new ValueSignal<>("");
+    private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
     private volatile boolean cancelled;
 
     Task(AsyncAction<?> action) {
@@ -30,9 +33,24 @@ public final class Task {
         return statusText.asReadonly();
     }
 
+    /** How much of the Task is done, from 0 to 1. Only meaningful if its Action reports Progress. */
+    public Signal<Double> progress() {
+        return progress.asReadonly();
+    }
+
+    /** What a Succeeded Task produced, or empty if its Action didn't say. */
+    public Signal<String> resultSummary() {
+        return resultSummary.asReadonly();
+    }
+
     /** The message of the exception a Failed Task ended with, empty otherwise. */
     public Signal<String> errorMessage() {
         return errorMessage.asReadonly();
+    }
+
+    /** Whether the user has removed this Finished Task from the tray. */
+    public Signal<Boolean> dismissed() {
+        return dismissed.asReadonly();
     }
 
     /**
@@ -43,14 +61,24 @@ public final class Task {
         cancelled = true;
     }
 
-    TaskContext context() {
-        return new TaskContext() {
+    ProgressContext context() {
+        return new ProgressContext() {
             @Override
             public void setStatusText(String text) {
-                if (cancelled) {
-                    throw new CancellationException();
-                }
+                throwIfCancelled();
                 statusText.set(text);
+            }
+
+            @Override
+            public void setResultSummary(String text) {
+                throwIfCancelled();
+                resultSummary.set(text);
+            }
+
+            @Override
+            public void setProgress(double value) {
+                throwIfCancelled();
+                progress.set(Math.clamp(value, 0.0, 1.0));
             }
 
             @Override
@@ -58,6 +86,12 @@ public final class Task {
                 return cancelled;
             }
         };
+    }
+
+    private void throwIfCancelled() {
+        if (cancelled) {
+            throw new CancellationException();
+        }
     }
 
     void succeed() {
@@ -71,5 +105,9 @@ public final class Task {
 
     void markCancelled() {
         state.set(TaskState.CANCELLED);
+    }
+
+    void dismiss() {
+        dismissed.set(true);
     }
 }

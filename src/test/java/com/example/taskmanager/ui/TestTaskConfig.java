@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Primary;
 
 import com.example.taskmanager.DemoActions;
 import com.example.taskmanager.task.AsyncAction;
+import com.example.taskmanager.task.AsyncProgressAction;
 import com.example.taskmanager.task.BlockingMode;
 import com.example.taskmanager.task.TestExecutor;
 
@@ -33,6 +34,13 @@ public class TestTaskConfig {
                     return null;
                 }),
                 new AsyncAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> null),
+                new AsyncProgressAction<>("Export data", BlockingMode.NON_BLOCKING, ctx -> {
+                    ctx.setProgress(0.5);
+                    executor.pause();
+                    ctx.setProgress(1);
+                    ctx.setResultSummary("3 CSV files");
+                    return null;
+                }),
                 new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
                     throw new IllegalStateException("Server unreachable");
                 })));

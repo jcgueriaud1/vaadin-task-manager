@@ -104,6 +104,26 @@ class AsyncActionTest {
     }
 
     @Test
+    void cancelledTaskStopsAtItsNextProgressAndEndsCancelled() {
+        var action = new AsyncProgressAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> {
+            ctx.setProgress(0.25);
+            executor.pause();
+            ctx.setProgress(0.5);
+            return null;
+        });
+        CompletableFuture<Object> future = action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        executor.runNext();
+
+        task.cancel();
+        executor.resume();
+
+        assertEquals(0.25, task.progress().peek());
+        assertEquals(TaskState.CANCELLED, task.state().peek());
+        assertThrows(CancellationException.class, future::join);
+    }
+
+    @Test
     void cancellingTheFutureCancelsTheTask() {
         var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
             executor.pause();
@@ -157,5 +177,63 @@ class AsyncActionTest {
         assertFalse(taskList.isRunning(action).peek());
         action.start(taskList);
         assertEquals(3, taskList.tasks().peek().size());
+    }
+
+    @Test
+    void progressFollowsWhatTheWorkReportsClampedToZeroToOne() {
+        var action = new AsyncProgressAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> {
+            ctx.setProgress(0.25);
+            executor.pause();
+            ctx.setProgress(1.5);
+            executor.pause();
+            ctx.setProgress(-0.5);
+            executor.pause();
+            return null;
+        });
+        assertTrue(action.reportsProgress());
+        action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        assertEquals(0.0, task.progress().peek());
+
+        executor.runNext();
+        assertEquals(0.25, task.progress().peek());
+
+        executor.resume();
+        assertEquals(1.0, task.progress().peek());
+
+        executor.resume();
+        assertEquals(0.0, task.progress().peek());
+    }
+
+    @Test
+    void anActionWithoutProgressCanStillEndWithAResultSummary() {
+        var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+            ctx.setResultSummary("1,240 emails sent");
+            return null;
+        });
+        assertFalse(action.reportsProgress());
+        action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        assertEquals("", task.resultSummary().peek());
+
+        executor.runAll();
+
+        assertEquals(TaskState.SUCCEEDED, task.state().peek());
+        assertEquals("1,240 emails sent", task.resultSummary().peek());
+    }
+
+    @Test
+    void anActionWithProgressCanEndWithAResultSummary() {
+        var action = new AsyncProgressAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> {
+            ctx.setProgress(1);
+            ctx.setResultSummary("5 PDF files");
+            return null;
+        });
+        action.start(taskList);
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+
+        executor.runAll();
+
+        assertEquals("5 PDF files", task.resultSummary().peek());
     }
 }

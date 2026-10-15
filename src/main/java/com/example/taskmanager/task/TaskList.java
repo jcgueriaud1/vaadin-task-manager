@@ -11,6 +11,9 @@ import com.vaadin.flow.signals.local.ListSignal;
 /** All Tasks of one user session, Running and Finished. */
 public class TaskList {
 
+    /** The Task list keeps at most this many Tasks, evicting the oldest Finished Task first. */
+    public static final int MAX_TASKS = 50;
+
     private final Executor executor;
     private final ListSignal<Task> tasks = new ListSignal<>();
 
@@ -55,6 +58,25 @@ public class TaskList {
     }
 
     /**
+     * Starts a new Task of the same Action as a Failed or Cancelled Task. The old
+     * Task stays as it was.
+     */
+    public void retry(Task task) {
+        TaskState state = task.state().peek();
+        if (state != TaskState.FAILED && state != TaskState.CANCELLED) {
+            throw new IllegalStateException("Only a Failed or Cancelled Task can be retried");
+        }
+        task.action().start(this);
+    }
+
+    /** Removes every Finished Task from the Task list. Running Tasks stay. */
+    public synchronized void clearFinished() {
+        tasks.peek().stream()
+                .filter(entry -> entry.peek().state().peek() != TaskState.RUNNING)
+                .forEach(tasks::remove);
+    }
+
+    /**
      * The average Progress of the Running Tasks that report Progress, or empty if
      * there are none.
      */
@@ -70,13 +92,21 @@ public class TaskList {
 
     /**
      * Adds a new Running Task of the Action, refusing if the Action already has
-     * one: an Action has at most one Running Task per session.
+     * one: an Action has at most one Running Task per session. When the list is
+     * full, the oldest Finished Task makes room.
      */
     synchronized Task add(AsyncAction<?> action) {
         boolean running = tasks.peekValues()
                 .anyMatch(task -> task.action() == action && task.state().peek() == TaskState.RUNNING);
         if (running) {
             throw new IllegalStateException(action.name() + " already has a Running Task");
+        }
+        if (tasks.peek().size() >= MAX_TASKS) {
+            var oldestFinished = tasks.peek().stream()
+                    .filter(entry -> entry.peek().state().peek() != TaskState.RUNNING)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(MAX_TASKS + " Tasks are already Running"));
+            tasks.remove(oldestFinished);
         }
         Task task = new Task(action);
         tasks.insertLast(task);

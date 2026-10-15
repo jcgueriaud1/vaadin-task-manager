@@ -1,5 +1,6 @@
 package com.example.taskmanager.task;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -15,10 +16,17 @@ public class TaskList {
     public static final int MAX_TASKS = 50;
 
     private final Executor executor;
+    private final Clock clock;
     private final ListSignal<Task> tasks = new ListSignal<>();
 
     public TaskList(Executor executor) {
+        this(executor, Clock.systemDefaultZone());
+    }
+
+    /** A Task list whose Tasks take their start and finish times from the clock. */
+    public TaskList(Executor executor, Clock clock) {
         this.executor = executor;
+        this.clock = clock;
     }
 
     public ListSignal<Task> tasks() {
@@ -108,7 +116,7 @@ public class TaskList {
                     .orElseThrow(() -> new IllegalStateException(MAX_TASKS + " Tasks are already Running"));
             tasks.remove(oldestFinished);
         }
-        Task task = new Task(action);
+        Task task = new Task(action, clock);
         tasks.insertLast(task);
         return task;
     }

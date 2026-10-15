@@ -5,19 +5,20 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
+import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.server.PWA;
-import com.vaadin.flow.theme.lumo.Lumo;
+import com.vaadin.flow.theme.aura.Aura;
 
 /**
  * The entry point of the Spring Boot application.
- *
- * Use the @PWA annotation make the application installable on phones, tablets
- * and some desktop browsers.
- *
+ * <p>
+ * {@code @Push} lets Task updates made on background threads reach the browser
+ * right away.
  */
 @SpringBootApplication
 @PWA(name = "Vaadin Task Manager", shortName = "Task Manager")
-@StyleSheet(Lumo.STYLESHEET)
+@Push
+@StyleSheet(Aura.STYLESHEET)
 @StyleSheet("styles.css")
 public class Application implements AppShellConfigurator {
 

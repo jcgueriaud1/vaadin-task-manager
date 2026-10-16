@@ -29,8 +29,8 @@ import com.vaadin.flow.signals.local.ValueSignal;
 /**
  * The app shell: a drawer with the app's pages, a navbar with the view title
  * and the task center, the Task tray and the completion toasts, present in
- * every view. It reports whether its browser tab is visible, counts Unseen Tasks
- * in the page title and shows a native notification for each Task that becomes
+ * every view. It reports whether its browser tab is visible, shows the Unseen
+ * count and the overall Progress in the page title and shows a native notification for each Task that becomes
  * Unseen.
  */
 public class MainLayout extends AppLayout implements AfterNavigationObserver {
@@ -73,8 +73,11 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
             });
             Signal.effect(this, () -> {
                 int unseen = taskList.unseenCount().get();
-                String base = viewTitle.get();
-                String pageTitle = unseen > 0 ? "(" + unseen + ") " + base : base;
+                String pageTitle = (unseen > 0 ? "(" + unseen + ") " : "")
+                        + taskList.overallProgress().get()
+                                .map(progress -> (int) (progress * 100) + "% · ")
+                                .orElse("")
+                        + viewTitle.get();
                 // After the router, which sets the plain view title once navigation ends
                 ui.beforeClientResponse(this, context -> ui.getPage().setTitle(pageTitle));
             });

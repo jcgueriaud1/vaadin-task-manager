@@ -20,13 +20,15 @@ The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
 - **Tray and task center**: every view has a tray of the session's Tasks with a progress ring, their **Status
   text** and Progress, and a navbar button that says how many Tasks are Running, with a ring for their overall
   Progress. Users can cancel a Running Task, dismiss a **Finished Task** or open it on the Background tasks page.
+- **Progress in the tab title**: while Tasks that report Progress are Running, every tab's title starts with
+  their overall Progress, for example `45% · Actions`, so users can follow it from another tab.
 - **Background tasks page** (`/tasks`): Tasks filtered by **Task state**, with a detail pane for the selected Task
   (its URL is `/tasks/{id}`). From there users can **Retry** a Failed or Cancelled Task, or clear the
   **Task history**.
 - **Completion toasts**: when a Task succeeds or fails, every visible tab of the session shows a toast that
   links to the Task's details.
 - **Unseen Tasks and native notifications**: a Task that finishes while no tab is visible is **Unseen**. The page
-  title counts Unseen Tasks, and if the user allowed it from the navbar button, the browser shows a native
+  title counts Unseen Tasks before the Progress, as in `(2) 45% · Actions`, and if the user allowed it from the navbar button, the browser shows a native
   notification.
 
 All browser tabs of one session share the same **Task list**. It is kept in memory with local signals; see

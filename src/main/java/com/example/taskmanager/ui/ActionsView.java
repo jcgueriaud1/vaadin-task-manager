@@ -11,6 +11,8 @@ import com.example.taskmanager.task.BlockingMode;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -101,8 +103,8 @@ public class ActionsView extends Div {
         add(card(SEND_NEWSLETTER, "Non-blocking, without Progress",
                 """
                 The simplest kind: an AsyncAction. Its work updates the Status text \
-                and ends with a Result summary. Without Progress, the tray shows an \
-                indeterminate bar. Start it, then keep using the app or cancel it \
+                and ends with a Result summary. Without Progress, the tray shows a \
+                spinning ring. Start it, then keep using the app or cancel it \
                 from the tray.""",
                 """
                 new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
@@ -211,6 +213,7 @@ public class ActionsView extends Div {
             }
         });
         start.setAriaLabel("Start " + action.name());
+        start.addThemeVariants(ButtonVariant.PRIMARY);
         start.bindEnabled(Signal.not(running));
         Div card = new Div(new H2(action.name()));
         if (!kind.isEmpty()) {
@@ -222,7 +225,9 @@ public class ActionsView extends Div {
         if (!code.isEmpty()) {
             Pre pre = new Pre(code);
             pre.addClassName("action-code");
-            card.add(pre);
+            Details details = new Details("Show the code", pre);
+            details.addClassName("action-code-details");
+            card.add(details);
         }
         card.addClassName("action-card");
         return card;

@@ -17,13 +17,14 @@ The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
 - **Actions page** (`/`): start each demo **Action**. Each one runs as a **Task** on its own virtual thread.
   Some report **Progress**, one fails at random and one is a **Blocking Task**, which covers its tab with a
   dialog until it finishes or is cancelled.
-- **Tray and task center**: every view has a tray of the session's Tasks with their **Status text** and
-  Progress, and a navbar counter of Running Tasks. Users can cancel a Running Task or dismiss a **Finished Task**.
+- **Tray and task center**: every view has a tray of the session's Tasks with a progress ring, their **Status
+  text** and Progress, and a navbar button that says how many Tasks are Running, with a ring for their overall
+  Progress. Users can cancel a Running Task, dismiss a **Finished Task** or open it on the Background tasks page.
 - **Background tasks page** (`/tasks`): Tasks filtered by **Task state**, with a detail pane for the selected Task
   (its URL is `/tasks/{id}`). From there users can **Retry** a Failed or Cancelled Task, or clear the
   **Task history**.
-- **Completion toasts**: when a Task succeeds or fails, every visible tab of the session shows a toast. The
-  toast of a Failed Task links to its details.
+- **Completion toasts**: when a Task succeeds or fails, every visible tab of the session shows a toast that
+  links to the Task's details.
 - **Unseen Tasks and native notifications**: a Task that finishes while no tab is visible is **Unseen**. The page
   title counts Unseen Tasks, and if the user allowed it from the navbar button, the browser shows a native
   notification.
@@ -63,7 +64,7 @@ Either one can be `BlockingMode.NON_BLOCKING` or `BlockingMode.BLOCKING`, which 
 
 ### Non-blocking, without Progress
 
-The tray shows an indeterminate bar and the Status text.
+The tray shows a spinning ring and the Status text.
 
 ```java
 static final AsyncAction<Integer> SEND_NEWSLETTER = new AsyncAction<>(

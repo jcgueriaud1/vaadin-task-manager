@@ -52,11 +52,11 @@ class SecondTabTest extends SpringBrowserlessTest {
     void runningCountAndDismissShowInTheOtherTab() {
         test(startButton("Generate report")).click();
         runPendingSignalsTasks();
-        assertEquals("1", $(Button.class).from(secondTab).withAriaLabel("Task center").single().getText());
+        assertEquals("1 running", $(Button.class).from(secondTab).withAriaLabel("Task center").single().getText());
 
         executor.runAll();
         runPendingSignalsTasks();
-        assertEquals("0", $(Button.class).from(secondTab).withAriaLabel("Task center").single().getText());
+        assertEquals("Tasks", $(Button.class).from(secondTab).withAriaLabel("Task center").single().getText());
         assertTrue(secondTrayShown());
 
         test($(Button.class).withAriaLabel("Dismiss Generate report").single()).click();

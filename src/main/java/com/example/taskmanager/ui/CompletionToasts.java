@@ -10,7 +10,10 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.page.PageVisibility;
@@ -59,30 +62,53 @@ final class CompletionToasts {
 
     private static Notification succeeded(Task task) {
         Notification toast = new Notification();
-        Span name = new Span(task.action().name());
-        name.addClassName("task-name");
+        toast.addClassName("completion-toast");
         Span resultSummary = new Span(task.resultSummary().peek());
         resultSummary.addClassName("task-result-summary");
-        Button dismiss = new Button("Dismiss", e -> toast.close());
-        dismiss.addThemeVariants(ButtonVariant.TERTIARY);
-        toast.add(name, resultSummary, dismiss);
+        Button open = new Button("Open", e -> openDetails(e.getSource(), task, toast));
+        open.addThemeVariants(ButtonVariant.TERTIARY);
+        toast.add(icon(VaadinIcon.CHECK_CIRCLE, "succeeded"), text(task, resultSummary), open, dismiss(toast));
         return toast;
     }
 
     private static Notification failed(Task task) {
         Notification toast = new Notification();
+        toast.addClassName("completion-toast");
         toast.addThemeVariants(NotificationVariant.ERROR);
-        Span name = new Span(task.action().name());
-        name.addClassName("task-name");
         Span errorMessage = new Span(task.errorMessage().peek());
         errorMessage.addClassName("task-error-message");
-        Button details = new Button("Details", e -> {
-            e.getSource().getUI().ifPresent(ui -> ui.navigate(TasksView.class,
-                    new RouteParameters(TasksView.TASK_ID, String.valueOf(task.id()))));
-            toast.close();
-        });
+        Button details = new Button("Details", e -> openDetails(e.getSource(), task, toast));
         details.addThemeVariants(ButtonVariant.TERTIARY);
-        toast.add(name, errorMessage, details);
+        toast.add(icon(VaadinIcon.EXCLAMATION_CIRCLE, "failed"), text(task, errorMessage), details, dismiss(toast));
         return toast;
+    }
+
+    private static Component icon(VaadinIcon vaadinIcon, String state) {
+        Icon icon = vaadinIcon.create();
+        icon.addClassNames("task-state-icon", state);
+        icon.getElement().setAttribute("aria-hidden", "true");
+        return icon;
+    }
+
+    /** The Task's name in bold, then what it produced or why it failed. */
+    private static Div text(Task task, Span outcome) {
+        Span name = new Span(task.action().name());
+        name.addClassName("task-name");
+        Div text = new Div(name, outcome);
+        text.addClassName("completion-toast-text");
+        return text;
+    }
+
+    private static Button dismiss(Notification toast) {
+        Button dismiss = new Button(VaadinIcon.CLOSE_SMALL.create(), e -> toast.close());
+        dismiss.addThemeVariants(ButtonVariant.TERTIARY);
+        dismiss.setAriaLabel("Dismiss");
+        return dismiss;
+    }
+
+    private static void openDetails(Component source, Task task, Notification toast) {
+        source.getUI().ifPresent(ui -> ui.navigate(TasksView.class,
+                new RouteParameters(TasksView.TASK_ID, String.valueOf(task.id()))));
+        toast.close();
     }
 }

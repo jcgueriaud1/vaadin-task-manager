@@ -64,7 +64,7 @@ class CompletionToastTest extends SpringBrowserlessTest {
         String text = toast.getElement().getTextRecursively();
         assertTrue(text.contains("Export data"), text);
         assertTrue(text.contains("3 CSV files"), text);
-        assertTrue($(Button.class).from(toast).withText("Dismiss").exists());
+        assertTrue($(Button.class).from(toast).withAriaLabel("Dismiss").exists());
     }
 
     @Test
@@ -193,7 +193,7 @@ class CompletionToastTest extends SpringBrowserlessTest {
         assertFalse($(Dialog.class).exists());
         assertEquals(1, toastsAbout("Import data"));
         Notification toast = $(Notification.class).single();
-        test($(Button.class).from(toast).withText("Dismiss").single()).click();
+        test($(Button.class).from(toast).withAriaLabel("Dismiss").single()).click();
         assertFalse(toast.isOpened());
     }
 

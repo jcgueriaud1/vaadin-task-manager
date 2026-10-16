@@ -11,7 +11,13 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.sidenav.SideNav;
+import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.component.page.PageVisibility;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
@@ -21,7 +27,8 @@ import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
 /**
- * The app shell: a navbar, the Task tray and the completion toasts, present in
+ * The app shell: a drawer with the app's pages, a navbar with the view title
+ * and the task center, the Task tray and the completion toasts, present in
  * every view. It reports whether its browser tab is visible, counts Unseen Tasks
  * in the page title and shows a native notification for each Task that becomes
  * Unseen.
@@ -35,9 +42,19 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     public MainLayout(TaskList taskList) {
         this.taskList = taskList;
-        H1 title = new H1("Task Manager");
-        title.addClassName("app-title");
-        addToNavbar(title, new TaskCenter(taskList), new NotificationPermissionButton());
+        Span appName = new Span("Task Manager");
+        appName.addClassName("app-name");
+        SideNav nav = new SideNav();
+        nav.addItem(new SideNavItem("Actions", ActionsView.class, VaadinIcon.PLAY_CIRCLE_O.create()),
+                new SideNavItem("Background tasks", TasksView.class, VaadinIcon.TASKS.create()));
+        addToDrawer(appName, nav);
+
+        H1 title = new H1();
+        title.bindText(viewTitle);
+        title.addClassName("view-title");
+        Div navbarEnd = new Div(new NotificationPermissionButton(), new TaskCenter(taskList));
+        navbarEnd.addClassName("navbar-end");
+        addToNavbar(new DrawerToggle(), title, navbarEnd);
         getElement().appendChild(new TaskTray(taskList).getElement());
         CompletionToasts.showIn(this, taskList);
     }

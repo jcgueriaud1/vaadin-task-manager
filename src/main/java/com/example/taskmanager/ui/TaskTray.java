@@ -7,11 +7,16 @@ import java.util.Optional;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TaskState;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.progressbar.ProgressBar;
+import com.vaadin.flow.router.RouteParameters;
+import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
@@ -20,14 +25,19 @@ public class TaskTray extends Div {
 
     public TaskTray(TaskList taskList) {
         addClassName("task-tray");
+        getElement().setAttribute("role", "region");
+        getElement().setAttribute("aria-label", "Background tasks");
         Span headline = new Span();
         headline.addClassName("task-tray-headline");
         headline.bindText(Signal.computed(() -> headline(taskList.trayTasks().get())));
         // Collapsing is a per-tab choice, so it isn't kept in the Task list
         ValueSignal<Boolean> collapsed = new ValueSignal<>(false);
-        Button toggle = new Button(collapsed.map(c -> c ? "▴" : "▾"));
+        Button toggle = new Button(new Icon(VaadinIcon.CHEVRON_DOWN_SMALL));
         toggle.addThemeVariants(ButtonVariant.TERTIARY);
+        toggle.addClassName("task-tray-toggle");
         toggle.getElement().bindAttribute("aria-label", collapsed.map(c -> c ? "Expand tray" : "Collapse tray"));
+        toggle.getElement().bindAttribute("aria-expanded", collapsed.map(c -> String.valueOf(!c)));
+        toggle.bindClassName("collapsed", collapsed);
         toggle.addClickListener(e -> collapsed.update(c -> !c));
         Div header = new Div(headline, toggle);
         header.addClassName("task-tray-header");
@@ -77,32 +87,85 @@ public class TaskTray extends Div {
     private static Div row(Task task, TaskList taskList) {
         Span name = new Span(task.action().name());
         name.addClassName("task-name");
-        Span state = new Span();
-        state.addClassName("task-state");
-        state.bindText(task.state().map(TaskTray::label));
-        Span statusText = new Span();
-        statusText.addClassName("task-status-text");
-        statusText.bindText(task.statusText());
-        Span errorMessage = new Span();
-        errorMessage.addClassName("task-error-message");
-        errorMessage.bindText(task.errorMessage());
-        Span resultSummary = new Span();
-        resultSummary.addClassName("task-result-summary");
-        resultSummary.bindText(task.resultSummary());
-        resultSummary.bindVisible(task.state().map(s -> s == TaskState.SUCCEEDED));
-        Button dismiss = new Button("✕", e -> taskList.dismiss(task));
-        dismiss.addThemeVariants(ButtonVariant.TERTIARY);
-        dismiss.setAriaLabel("Dismiss " + task.action().name());
-        dismiss.addClassName("task-dismiss");
-        dismiss.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
+        Div body = new Div(name, meta(task));
+        body.addClassName("task-row-body");
+
         Button cancel = new Button("Cancel", e -> task.cancel());
         cancel.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
         cancel.setAriaLabel("Cancel " + task.action().name());
         cancel.addClassName("task-cancel");
         cancel.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
-        Div row = new Div(name, state, dismiss, cancel, statusText, errorMessage, resultSummary, progress(task));
+        RouterLink open = detailLink(task);
+        open.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
+        Button dismiss = new Button(new Icon(VaadinIcon.CLOSE_SMALL), e -> taskList.dismiss(task));
+        dismiss.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        dismiss.setAriaLabel("Dismiss " + task.action().name());
+        dismiss.addClassName("task-dismiss");
+        dismiss.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
+        Div actions = new Div(cancel, open, dismiss);
+        actions.addClassName("task-row-actions");
+
+        Div row = new Div(indicator(task), body, actions);
         row.addClassName("task-row");
         return row;
+    }
+
+    /** A link to the Task on the Background tasks page. */
+    static RouterLink detailLink(Task task) {
+        RouterLink open = new RouterLink("Open", TasksView.class,
+                new RouteParameters(TasksView.TASK_ID, String.valueOf(task.id())));
+        open.addClassName("task-open");
+        open.getElement().setAttribute("aria-label", "Open " + task.action().name());
+        return open;
+    }
+
+    /**
+     * What the Task is doing now, for example "50% · Step 2 of 4: aggregating…"
+     * or "Running · Preparing recipients" while Running, and "Succeeded · 5 PDF
+     * files" or "Failed · Server unreachable" once Finished.
+     */
+    static Div meta(Task task) {
+        boolean reportsProgress = task.action().reportsProgress();
+        Span state = new Span(task.state().map(TaskTray::label));
+        state.addClassName("task-state");
+        state.bindVisible(task.state().map(s -> s != TaskState.RUNNING || !reportsProgress));
+        Span percent = new Span(task.progress().map(p -> Math.round(p * 100) + "%"));
+        percent.addClassName("task-percent");
+        percent.bindVisible(task.state().map(s -> s == TaskState.RUNNING && reportsProgress));
+        Span statusText = new Span(task.statusText());
+        statusText.addClassName("task-status-text");
+        statusText.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        Span resultSummary = new Span(task.resultSummary());
+        resultSummary.addClassName("task-result-summary");
+        resultSummary.bindVisible(task.state().map(s -> s == TaskState.SUCCEEDED));
+        Span errorMessage = new Span(task.errorMessage());
+        errorMessage.addClassName("task-error-message");
+        errorMessage.bindVisible(task.state().map(s -> s == TaskState.FAILED));
+        Div meta = new Div(state, percent, statusText, resultSummary, errorMessage);
+        meta.addClassName("task-meta");
+        return meta;
+    }
+
+    /** A ring while the Task is Running, then an icon for how it finished. */
+    static Div indicator(Task task) {
+        ProgressRing ring = task.action().reportsProgress()
+                ? new ProgressRing(task.progress())
+                : new ProgressRing();
+        ring.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        Div indicator = new Div(ring,
+                stateIcon(task, TaskState.SUCCEEDED, VaadinIcon.CHECK_CIRCLE),
+                stateIcon(task, TaskState.FAILED, VaadinIcon.EXCLAMATION_CIRCLE),
+                stateIcon(task, TaskState.CANCELLED, VaadinIcon.CLOSE_CIRCLE));
+        indicator.addClassName("task-indicator");
+        return indicator;
+    }
+
+    private static Component stateIcon(Task task, TaskState state, VaadinIcon vaadinIcon) {
+        Icon icon = vaadinIcon.create();
+        icon.addClassNames("task-state-icon", state.name().toLowerCase());
+        icon.getElement().setAttribute("aria-hidden", "true");
+        icon.bindVisible(task.state().map(s -> s == state));
+        return icon;
     }
 
     /** Determinate if the Task's Action reports Progress, indeterminate otherwise; shown while Running. */

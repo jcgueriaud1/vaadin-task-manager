@@ -37,16 +37,16 @@ class TaskCenterTest extends SpringBrowserlessTest {
 
     @Test
     void buttonShowsTheRunningCount() {
-        assertEquals("0", taskCenterButton().getText());
+        assertEquals("Tasks", taskCenterButton().getText());
 
         test(startButton("Send newsletter")).click();
         test(startButton("Generate report")).click();
         runPendingSignalsTasks();
-        assertEquals("2", taskCenterButton().getText());
+        assertEquals("2 running", taskCenterButton().getText());
 
         executor.runAll();
         runPendingSignalsTasks();
-        assertEquals("0", taskCenterButton().getText());
+        assertEquals("Tasks", taskCenterButton().getText());
     }
 
     @Test

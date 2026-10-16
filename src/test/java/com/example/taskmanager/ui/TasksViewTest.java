@@ -227,8 +227,7 @@ class TasksViewTest extends SpringBrowserlessTest {
 
         List<String> expected = List.of("Running (1)", "Succeeded (0)", "Failed (0)", "Cancelled (0)");
         assertEquals(expected, tabLabels());
-        assertEquals(expected, $(Tab.class).from(secondTab).all().stream()
-                .map(tab -> tab.getElement().getTextRecursively()).toList());
+        assertEquals(expected, $(Tab.class).from(secondTab).all().stream().map(this::tabLabel).toList());
         assertFalse($(H2.class).from(detailPane()).exists(), "the cleared Task is no longer shown");
     }
 
@@ -251,7 +250,14 @@ class TasksViewTest extends SpringBrowserlessTest {
     }
 
     private List<String> tabLabels() {
-        return $(Tab.class).all().stream().map(tab -> tab.getElement().getTextRecursively()).toList();
+        return $(Tab.class).all().stream().map(this::tabLabel).toList();
+    }
+
+    /** For example "Running (1)": the label, then the count from its badge. */
+    private String tabLabel(Tab tab) {
+        String label = $(Span.class).from(tab).withClassName("tab-label").single().getText();
+        String count = $(Span.class).from(tab).withClassName("tab-count").single().getText();
+        return label + " (" + count + ")";
     }
 
     private void selectTab(String state) {

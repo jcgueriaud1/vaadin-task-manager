@@ -75,6 +75,40 @@ class UnseenTabsTest extends SpringBrowserlessTest {
     }
 
     @Test
+    void everyTabTitleShowsTheOverallProgressWhileTasksWithProgressRun() {
+        test(startButton("Export data")).click();
+        executor.runNext();
+        runPendingSignalsTasks();
+        assertEquals("50% · Actions", title(first));
+        assertEquals("50% · Background tasks", title(second));
+
+        executor.runAll();
+        runPendingSignalsTasks();
+        assertEquals("Actions", title(first));
+        assertEquals("Background tasks", title(second));
+    }
+
+    @Test
+    void theTabTitleShowsNoProgressForTasksWithoutProgress() {
+        test(startButton("Send newsletter")).click();
+        executor.runNext();
+        runPendingSignalsTasks();
+        assertEquals("Actions", title(first));
+    }
+
+    @Test
+    void theUnseenCountComesBeforeTheOverallProgress() {
+        test(startButton("Generate report")).click();
+        hide(first);
+        hide(second);
+        executor.runAll();
+        test(startButton("Export data")).click();
+        executor.runNext();
+        runPendingSignalsTasks();
+        assertEquals("(1) 50% · Actions", title(first));
+    }
+
+    @Test
     void everyTaskCenterShowsAnUnseenBadgeUntilATabIsVisible() {
         test(startButton("Generate report")).click();
         test(startButton("Sync with server")).click();

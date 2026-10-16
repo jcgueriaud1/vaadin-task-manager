@@ -40,6 +40,8 @@ public class TasksView extends Div implements BeforeEnterObserver {
 
     private static final DateTimeFormatter START_TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
+    private static final DateTimeFormatter SHORT_TIME = DateTimeFormatter.ofPattern("HH:mm");
+
     private final TaskList taskList;
     private final Clock clock;
     private final Tabs tabs = new Tabs();
@@ -70,9 +72,15 @@ public class TasksView extends Div implements BeforeEnterObserver {
                 return null;
             });
         });
+        Span empty = new Span(filter.map(state -> "No " + TaskTray.label(state).toLowerCase() + " tasks."));
+        empty.addClassName("tasks-empty");
+        empty.bindVisible(Signal.computed(() -> {
+            TaskState shownState = filter.get();
+            return taskList.tasks().getValues().noneMatch(task -> task.state().get() == shownState);
+        }));
         Button clearFinished = new Button("Clear finished", e -> taskList.clearFinished());
-        clearFinished.addThemeVariants(ButtonVariant.TERTIARY);
-        Div list = new Div(tabs, clearFinished, rows);
+        clearFinished.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        Div list = new Div(tabs, rows, empty, clearFinished);
         list.addClassName("tasks-list");
 
         Div detail = new Div();
@@ -116,6 +124,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         name.addClassName("task-detail-name");
         Span state = new Span(task.state().map(TaskTray::label));
         state.addClassName("task-state");
+        state.getElement().bindAttribute("data-state", task.state().map(s -> s.name().toLowerCase()));
         Span started = new Span("Started " + START_TIME.format(task.startedAt().atZone(clock.getZone())));
         started.addClassName("task-started");
         Span elapsed = new Span(Signal.computed(() -> {
@@ -142,15 +151,22 @@ public class TasksView extends Div implements BeforeEnterObserver {
         errorMessage.bindVisible(task.state().map(s -> s == TaskState.FAILED));
 
         Button cancel = new Button("Cancel", e -> task.cancel());
+        cancel.addThemeVariants(ButtonVariant.ERROR);
         cancel.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
         Button retry = new Button("Retry", e -> taskList.retry(task));
+        retry.addThemeVariants(ButtonVariant.PRIMARY);
         retry.bindVisible(task.state().map(s -> s == TaskState.FAILED || s == TaskState.CANCELLED));
         retry.bindEnabled(Signal.not(taskList.isRunning(task.action())));
         Div buttons = new Div(cancel, retry);
         buttons.addClassName("task-detail-buttons");
 
-        return new Component[] { name, state, started, elapsed, timeLeftText, TaskTray.progress(task), statusText,
-                resultSummary, errorMessage, buttons };
+        Div meta = new Div(state, started, elapsed, timeLeftText);
+        meta.addClassName("task-detail-meta");
+        Div title = new Div(name, meta);
+        title.addClassName("task-detail-title");
+        Div header = new Div(title, buttons);
+        header.addClassName("task-detail-header");
+        return new Component[] { header, TaskTray.progress(task), statusText, resultSummary, errorMessage };
     }
 
     /** For example "12 s", "1 min 30 s" or "2 h 5 min". */
@@ -169,17 +185,21 @@ public class TasksView extends Div implements BeforeEnterObserver {
         Signal<Long> count = Signal.computed(() -> taskList.tasks().getValues()
                 .filter(task -> task.state().get() == state)
                 .count());
-        Span label = new Span(count.map(n -> TaskTray.label(state) + " (" + n + ")"));
-        return new Tab(label);
+        Span label = new Span(TaskTray.label(state));
+        label.addClassName("tab-label");
+        Span badge = new Span(count.map(String::valueOf));
+        badge.addClassName("tab-count");
+        return new Tab(label, badge);
     }
 
-    private static Div row(Task task, Signal<Optional<Task>> selected) {
+    private Div row(Task task, Signal<Optional<Task>> selected) {
         Span name = new Span(task.action().name());
         name.addClassName("task-name");
-        Span statusText = new Span();
-        statusText.addClassName("task-status-text");
-        statusText.bindText(task.statusText());
-        Div row = new Div(name, statusText);
+        Span startedAt = new Span(SHORT_TIME.format(task.startedAt().atZone(clock.getZone())));
+        startedAt.addClassName("task-started-at");
+        Div body = new Div(name, TaskTray.meta(task));
+        body.addClassName("task-row-body");
+        Div row = new Div(TaskTray.indicator(task), body, startedAt);
         row.addClassName("tasks-row");
         row.bindClassName("selected", selected.map(s -> s.equals(Optional.of(task))));
         row.addClickListener(e -> e.getSource().getUI().ifPresent(ui -> ui.navigate(TasksView.class,

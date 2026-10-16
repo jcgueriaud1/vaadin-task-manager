@@ -107,7 +107,7 @@ class TaskTrayTest extends SpringBrowserlessTest {
         test(startButton("Send newsletter")).click();
         runPendingSignalsTasks();
 
-        ProgressBar indicator = rowIndicator("Send newsletter");
+        ProgressRing indicator = rowIndicator("Send newsletter");
         assertTrue(indicator.isIndeterminate());
         assertFalse(overallBarShown());
     }
@@ -131,7 +131,7 @@ class TaskTrayTest extends SpringBrowserlessTest {
 
         executor.resume();
         runPendingSignalsTasks();
-        assertFalse($(ProgressBar.class).from(row("Export data")).exists());
+        assertFalse($(ProgressRing.class).from(row("Export data")).exists());
         assertFalse(overallBarShown());
         String rowText = row("Export data").getElement().getTextRecursively();
         assertTrue(rowText.contains("Succeeded"), rowText);
@@ -167,8 +167,8 @@ class TaskTrayTest extends SpringBrowserlessTest {
                 .withCondition(row -> row.getElement().getTextRecursively().contains(actionName)).single();
     }
 
-    private ProgressBar rowIndicator(String actionName) {
-        return $(ProgressBar.class).from(row(actionName)).single();
+    private ProgressRing rowIndicator(String actionName) {
+        return $(ProgressRing.class).from(row(actionName)).single();
     }
 
     /** Hidden components aren't found by queries. */

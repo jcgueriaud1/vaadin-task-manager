@@ -5,9 +5,23 @@
 
 .actions-view {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(30rem, 100%), 1fr));
   gap: 1rem;
   padding: 1rem;
+}
+
+.actions-intro {
+  grid-column: 1 / -1;
+  max-width: 50rem;
+}
+
+.actions-intro h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.actions-intro p {
+  margin: 0.5rem 0 0;
 }
 
 .action-card {
@@ -22,6 +36,33 @@
 .action-card h2 {
   font-size: 1rem;
   margin: 0;
+}
+
+.action-card p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.action-card > vaadin-button {
+  align-self: flex-start;
+}
+
+.action-kind {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.action-code {
+  margin: 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  font-size: 0.75rem;
+  line-height: 1.45;
 }
 
 .task-tray {

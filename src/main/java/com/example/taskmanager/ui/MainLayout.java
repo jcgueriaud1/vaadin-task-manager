@@ -21,9 +21,10 @@ import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
 /**
- * The app shell: a navbar and the Task tray, present in every view. It reports
- * whether its browser tab is visible, counts Unseen Tasks in the page title and
- * shows a native notification for each Task that becomes Unseen.
+ * The app shell: a navbar, the Task tray and the completion toasts, present in
+ * every view. It reports whether its browser tab is visible, counts Unseen Tasks
+ * in the page title and shows a native notification for each Task that becomes
+ * Unseen.
  */
 public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
@@ -38,6 +39,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         title.addClassName("app-title");
         addToNavbar(title, new TaskCenter(taskList), new NotificationPermissionButton());
         getElement().appendChild(new TaskTray(taskList).getElement());
+        CompletionToasts.showIn(this, taskList);
     }
 
     @Override

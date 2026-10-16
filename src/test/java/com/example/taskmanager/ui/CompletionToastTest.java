@@ -45,7 +45,7 @@ class CompletionToastTest extends SpringBrowserlessTest {
 
     @BeforeEach
     void open() {
-        navigate(ActionsView.class);
+        navigate(TestActionsView.class);
         setVisibility(UI.getCurrent(), PageVisibility.VISIBLE);
     }
 

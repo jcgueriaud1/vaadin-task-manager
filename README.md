@@ -36,10 +36,98 @@ All browser tabs of one session share the same **Task list**. It is kept in memo
 ```text
 src/main/java/com/example/taskmanager/
 ├── task/            # Actions, Tasks and the session's Task list (UI-independent)
-├── ui/              # views, layout, tray, task center, toasts
-├── TaskConfig.java  # the executor, the clock, the session-scoped Task list and the demo Actions
-└── DemoActions.java
+├── ui/              # views (the demo Actions are in ActionsView), layout, tray, task center, toasts
+└── TaskConfig.java  # the executor, the clock and the session-scoped Task list
 ```
+
+## Creating Async Actions
+
+An **Action** is defined once from three things: a name, a `BlockingMode` and a work function. The work runs
+on a virtual thread, so it can block (I/O, `Thread.sleep`, calls to slow services). It reports back through
+the context it gets. The demo Actions are `static final` constants in
+[`ActionsView`](src/main/java/com/example/taskmanager/ui/ActionsView.java), and the Actions page shows each
+one's code next to its start button.
+
+Keep each Action in a constant or a singleton. `TaskList` recognises an Action by identity, which is how
+it allows at most one Running Task per Action and how Retry finds the Action again. If you create the
+Action inside a view's constructor, every tab and every visit gets a new one.
+
+There are two classes, depending on whether the Action reports **Progress**:
+
+| Class                    | Context the work gets | What the work can do                                       |
+|--------------------------|-----------------------|------------------------------------------------------------|
+| `AsyncAction<T>`         | `TaskContext`         | `setStatusText`, `setResultSummary`, `isCancelled`         |
+| `AsyncProgressAction<T>` | `ProgressContext`     | the same, plus `setProgress(double)` from 0 to 1           |
+
+Either one can be `BlockingMode.NON_BLOCKING` or `BlockingMode.BLOCKING`, which gives four kinds of Action.
+
+### Non-blocking, without Progress
+
+The tray shows an indeterminate bar and the Status text.
+
+```java
+static final AsyncAction<Integer> SEND_NEWSLETTER = new AsyncAction<>(
+        "Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+            ctx.setStatusText("Sending emails");
+            int sent = mailer.sendAll();            // any blocking work
+            ctx.setResultSummary("Sent to " + sent + " subscribers");
+            return sent;
+        });
+```
+
+### Non-blocking, with Progress
+
+Use `AsyncProgressAction` and call `setProgress` as the work goes. Values outside 0..1 are clamped.
+
+```java
+static final AsyncProgressAction<Integer> GENERATE_REPORT = new AsyncProgressAction<>(
+        "Generate report", BlockingMode.NON_BLOCKING, ctx -> {
+            for (int page = 1; page <= 10; page++) {
+                ctx.setStatusText("Rendering page " + page + " of 10");
+                renderPage(page);
+                ctx.setProgress(page / 10.0);
+            }
+            ctx.setResultSummary("10 pages");
+            return 10;
+        });
+```
+
+### Blocking
+
+`BlockingMode.BLOCKING` marks a Task that the user must wait for. The Action doesn't block the tab by
+itself. The view that starts it opens a `BlockingTaskDialog`, which covers the tab until the Task finishes
+or the user cancels it. Other tabs of the session stay usable.
+
+```java
+static final AsyncProgressAction<Integer> IMPORT_DATA = new AsyncProgressAction<>(
+        "Import data", BlockingMode.BLOCKING, ctx -> { /* ... */ return 2480; });
+
+Button start = new Button("Start", e -> {
+    Task task = IMPORT_DATA.startTask(taskList);
+    if (IMPORT_DATA.blockingMode() == BlockingMode.BLOCKING) {
+        new BlockingTaskDialog(task).open();
+    }
+});
+```
+
+### Starting an Action
+
+Inject the session's `TaskList` into the view. Then either:
+
+- call `action.startTask(taskList)`, which returns the `Task`, for example to open a `BlockingTaskDialog`, or
+- call `action.start(taskList)`, which returns a `CompletableFuture<T>` with the work's value. Cancelling the
+  future cancels the Task.
+
+`taskList.isRunning(action)` is a signal you can bind to the button, so it is disabled while the Action has a
+Running Task. Starting an Action that is already running throws an `IllegalStateException`.
+
+### Failure and Cancellation
+
+- **Failure**: any exception the work throws makes the Task Failed, with the exception's message as its error.
+  Users can Retry it from the Background tasks page.
+- **Cancellation**: when the user cancels, the next `setStatusText`, `setResultSummary` or `setProgress` call
+  throws a `CancellationException` and the Task ends Cancelled. Work that rarely reports should check
+  `ctx.isCancelled()` and return early. Work that ignores both still ends Cancelled, but only when it returns.
 
 ## Running the application
 
@@ -56,6 +144,7 @@ Then open http://localhost:8080.
 ```
 
 The tests replace the executor and the clock (`TestTaskConfig`), so they step through Tasks without waiting.
+They start their own Actions from `TestActionsView`, a test-only copy of the Actions page.
 
 ## Production build
 

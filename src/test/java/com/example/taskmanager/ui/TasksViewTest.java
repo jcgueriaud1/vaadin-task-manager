@@ -52,7 +52,7 @@ class TasksViewTest extends SpringBrowserlessTest {
     @BeforeEach
     void startFromTheActionsPage() {
         clock.set(NINE_AM);
-        navigate(ActionsView.class);
+        navigate(TestActionsView.class);
     }
 
     @AfterEach

@@ -7,14 +7,16 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
-import com.example.taskmanager.DemoActions;
 import com.example.taskmanager.task.AsyncAction;
 import com.example.taskmanager.task.AsyncProgressAction;
 import com.example.taskmanager.task.BlockingMode;
 import com.example.taskmanager.task.TestClock;
 import com.example.taskmanager.task.TestExecutor;
 
-/** Replaces the Executor, the Clock and the demo Actions with ones the test drives. */
+/**
+ * Replaces the Executor and the Clock with ones the test drives, and provides
+ * the Actions that {@link TestActionsView} shows instead of the demo ones.
+ */
 @TestConfiguration
 public class TestTaskConfig {
 
@@ -30,10 +32,13 @@ public class TestTaskConfig {
         return new TestClock(Instant.parse("2026-10-15T09:00:00Z"));
     }
 
+    /** The Actions the tests start. One instance for the whole test context, as Actions are matched by identity. */
+    public record TestActions(List<AsyncAction<?>> actions) {
+    }
+
     @Bean
-    @Primary
-    public DemoActions testActions(TestExecutor executor) {
-        return new DemoActions(List.of(
+    public TestActions testActions(TestExecutor executor) {
+        return new TestActions(List.of(
                 new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
                     ctx.setStatusText("Preparing recipients");
                     executor.pause();

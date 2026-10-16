@@ -34,7 +34,7 @@ class BlockingTaskTest extends SpringBrowserlessTest {
 
     @BeforeEach
     void open() {
-        navigate(ActionsView.class);
+        navigate(TestActionsView.class);
     }
 
     @AfterEach

@@ -44,7 +44,7 @@ class UnseenTabsTest extends SpringBrowserlessTest {
 
     @BeforeEach
     void openTwoTabs() {
-        navigate(ActionsView.class);
+        navigate(TestActionsView.class);
         first = UI.getCurrent();
         second = new UI();
         second.getInternals().setSession(VaadinSession.getCurrent());

@@ -15,7 +15,7 @@ One run of an Action, with its own state, progress, status text and outcome.
 _Avoid_: Job, execution, run
 
 **Blocking Task**:
-A Task that prevents the user from working in the view that started it until it finishes or is cancelled.
+A Task that prevents the user from working in the view that started it, whether by a start or a Retry, until it finishes or is cancelled.
 _Avoid_: Modal task, synchronous task
 
 **Non-blocking Task**:
@@ -49,7 +49,7 @@ An optional short text a Succeeded Task ends with, describing what it produced. 
 _Avoid_: Result, output
 
 **Retry**:
-Starting a new Task of the same Action from a Failed or Cancelled Task. The old Task stays as it was.
+Starting a new Task of the same Action from a Failed or Cancelled Task. The old Task stays as it was. Retrying a Blocking Task blocks the view it was retried from.
 _Avoid_: Rerun, restart
 
 ### Where Tasks live

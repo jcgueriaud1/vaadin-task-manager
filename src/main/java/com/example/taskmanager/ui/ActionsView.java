@@ -114,7 +114,10 @@ public class ActionsView extends Div {
                     ctx.setStatusText("");
                     ctx.setResultSummary("Sent to 1,240 subscribers");
                     return 1240;
-                });"""));
+                });
+
+                // In the view: starts it and follows it
+                add(new ActionButton(SEND_NEWSLETTER, taskList));"""));
         add(card(GENERATE_REPORT, "Non-blocking, with Progress",
                 """
                 An AsyncProgressAction: its work also gets setProgress(0..1), so the \
@@ -134,7 +137,10 @@ public class ActionsView extends Div {
                     ctx.setStatusText("");
                     ctx.setResultSummary("5 PDF files");
                     return 5;
-                });"""));
+                });
+
+                // In the view: starts it and follows it
+                add(new ActionButton(GENERATE_REPORT, taskList));"""));
         add(card(SYNC_WITH_SERVER, "Non-blocking, fails at random",
                 """
                 Any exception thrown by the work makes the Task Failed, with the \
@@ -153,7 +159,10 @@ public class ActionsView extends Div {
                     ctx.setStatusText("");
                     ctx.setResultSummary("Up to date");
                     return null;
-                });"""));
+                });
+
+                // In the view: starts it and follows it
+                add(new ActionButton(SYNC_WITH_SERVER, taskList));"""));
         add(card(IMPORT_DATA, "Blocking, with Progress",
                 """
                 BlockingMode.BLOCKING: its ActionButton opens a dialog over this tab \

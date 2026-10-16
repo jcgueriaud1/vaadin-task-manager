@@ -48,12 +48,22 @@ public class AsyncAction<T> {
         return reportsProgress;
     }
 
-    /** Starts a new Task of this Action in the given Task list. */
+    /**
+     * Starts a new Task of this Action in the given Task list. This never opens a
+     * dialog, even for a Blocking Action; from a view, use an {@code ActionButton}.
+     *
+     * @throws IllegalStateException if this Action already has a Running Task
+     */
     public CompletableFuture<T> start(TaskList taskList) {
         return run(taskList).future();
     }
 
-    /** Starts a new Task of this Action in the given Task list and returns that Task. */
+    /**
+     * Starts a new Task of this Action in the given Task list and returns that Task.
+     * Like {@link #start(TaskList)}, this never opens a dialog.
+     *
+     * @throws IllegalStateException if this Action already has a Running Task
+     */
     public Task startTask(TaskList taskList) {
         return run(taskList).task();
     }

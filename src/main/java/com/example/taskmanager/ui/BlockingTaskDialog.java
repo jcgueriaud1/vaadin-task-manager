@@ -1,5 +1,6 @@
 package com.example.taskmanager.ui;
 
+import com.example.taskmanager.task.BlockingMode;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskState;
 import com.vaadin.flow.component.button.Button;
@@ -12,6 +13,16 @@ import com.vaadin.flow.signals.Signal;
  * close it; only Cancel or the Task finishing does.
  */
 public class BlockingTaskDialog extends Dialog {
+
+    /**
+     * Opens a dialog over the current tab if the Task is Blocking. Every start of a
+     * Task from a tab goes through here, Retry included.
+     */
+    public static void openIfBlocking(Task task) {
+        if (task.action().blockingMode() == BlockingMode.BLOCKING) {
+            new BlockingTaskDialog(task).open();
+        }
+    }
 
     public BlockingTaskDialog(Task task) {
         setModal(true);

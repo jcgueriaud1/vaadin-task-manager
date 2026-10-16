@@ -97,32 +97,43 @@ static final AsyncProgressAction<Integer> GENERATE_REPORT = new AsyncProgressAct
 
 ### Blocking
 
-`BlockingMode.BLOCKING` marks a Task that the user must wait for. The Action doesn't block the tab by
-itself. The view that starts it opens a `BlockingTaskDialog`, which covers the tab until the Task finishes
-or the user cancels it. Other tabs of the session stay usable.
+`BlockingMode.BLOCKING` marks a Task that the user must wait for. When it starts from a tab, a
+`BlockingTaskDialog` covers that tab until the Task finishes or the user cancels it. Other tabs of the session
+stay usable. Retrying a Blocking Task from the Background tasks page blocks that tab the same way.
 
 ```java
 static final AsyncProgressAction<Integer> IMPORT_DATA = new AsyncProgressAction<>(
         "Import data", BlockingMode.BLOCKING, ctx -> { /* ... */ return 2480; });
-
-Button start = new Button("Start", e -> {
-    Task task = IMPORT_DATA.startTask(taskList);
-    if (IMPORT_DATA.blockingMode() == BlockingMode.BLOCKING) {
-        new BlockingTaskDialog(task).open();
-    }
-});
 ```
 
-### Starting an Action
+### Starting an Action from a view
 
-Inject the session's `TaskList` into the view. Then either:
+Inject the session's `TaskList` into the view and add an `ActionButton`:
 
-- call `action.startTask(taskList)`, which returns the `Task`, for example to open a `BlockingTaskDialog`, or
-- call `action.start(taskList)`, which returns a `CompletableFuture<T>` with the work's value. Cancelling the
-  future cancels the Task.
+```java
+add(new ActionButton(IMPORT_DATA, taskList));            // says "Start"
+add(new ActionButton(IMPORT_DATA, taskList, "Import"));  // your own text
+```
 
-`taskList.isRunning(action)` is a signal you can bind to the button, so it is disabled while the Action has a
-Running Task. Starting an Action that is already running throws an `IllegalStateException`.
+The button does the rest:
+
+- while the Action has a Running Task, in any tab of the session, it says "Import data running…" and is
+  disabled, so the Action never runs twice
+- a click starts a Task, and opens the `BlockingTaskDialog` if the Action is Blocking
+- its accessible name is "Start Import data", whatever its text.
+
+It is a regular Vaadin `Button`, so you can add theme variants, an icon or a tooltip.
+
+### Starting an Action from code
+
+Outside a view, for example from a scheduled job or a service, call the Action directly. These never open a
+dialog:
+
+- `action.startTask(taskList)` returns the `Task`.
+- `action.start(taskList)` returns a `CompletableFuture<T>` with the work's value. Cancelling the future
+  cancels the Task.
+
+Starting an Action that already has a Running Task throws an `IllegalStateException`.
 
 ### Failure and Cancellation
 

@@ -22,6 +22,7 @@ public final class Task {
     private final ValueSignal<String> resultSummary = new ValueSignal<>("");
     private final ValueSignal<String> errorMessage = new ValueSignal<>("");
     private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
+    private final ValueSignal<Boolean> unseen = new ValueSignal<>(false);
     private final Clock clock;
     private final Instant startedAt;
     private volatile Instant finishedAt;
@@ -94,6 +95,11 @@ public final class Task {
         return dismissed.asReadonly();
     }
 
+    /** Whether this Finished Task is Unseen: no tab of the session was visible when it finished. */
+    public Signal<Boolean> unseen() {
+        return unseen.asReadonly();
+    }
+
     /**
      * Asks the Task to stop. The work stops the next time it reports, and the
      * Task then becomes Cancelled.
@@ -153,5 +159,9 @@ public final class Task {
 
     void dismiss() {
         dismissed.set(true);
+    }
+
+    void markUnseen(boolean value) {
+        unseen.set(value);
     }
 }

@@ -77,13 +77,16 @@ public class AsyncAction<T> {
                     throw new CancellationException();
                 }
                 task.succeed();
+                taskList.finished(task);
                 future.complete(value);
             } catch (CancellationException e) {
                 task.markCancelled();
+                taskList.finished(task);
                 future.completeExceptionally(e);
             } catch (RuntimeException e) {
                 log.error("Task of {} failed", name, e);
                 task.fail(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+                taskList.finished(task);
                 future.completeExceptionally(e);
             }
         });

@@ -97,8 +97,25 @@
 }
 
 .task-center {
+  position: relative;
   margin-inline-start: auto;
   margin-inline-end: 1rem;
+}
+
+.unseen-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  min-width: 1.1rem;
+  padding: 0 0.3rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #d93025;
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 1.1rem;
+  text-align: center;
+  pointer-events: none;
 }
 
 .task-center-rows {
@@ -190,4 +207,8 @@
 .task-detail-buttons {
   display: flex;
   gap: 0.5rem;
+}
+
+.notification-permission {
+  margin-inline-end: 1rem;
 }

@@ -8,9 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.taskmanager.task.AsyncAction;
 import com.example.taskmanager.task.AsyncProgressAction;
 import com.example.taskmanager.task.BlockingMode;
-import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
-import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.Div;
@@ -20,7 +18,6 @@ import com.vaadin.flow.component.html.Pre;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.signals.Signal;
 
 /**
  * The demo Actions, one card each with an explanation, the code that defines
@@ -78,7 +75,7 @@ public class ActionsView extends Div {
                 return null;
             });
 
-    // Blocking: the view opens a BlockingTaskDialog over its tab until the Task finishes
+    // Blocking: its ActionButton opens a BlockingTaskDialog over the tab until the Task finishes
     static final AsyncProgressAction<Integer> IMPORT_DATA = new AsyncProgressAction<>(
             "Import data", BlockingMode.BLOCKING, ctx -> {
                 int files = 8;
@@ -159,8 +156,8 @@ public class ActionsView extends Div {
                 });"""));
         add(card(IMPORT_DATA, "Blocking, with Progress",
                 """
-                BlockingMode.BLOCKING: this view opens a dialog over its tab until the \
-                Task finishes or is cancelled. Other tabs of the session stay usable \
+                BlockingMode.BLOCKING: its ActionButton opens a dialog over this tab \
+                until the Task finishes or is cancelled, and so does Retry. Other tabs of the session stay usable \
                 and see the Task in their tray.""",
                 """
                 new AsyncProgressAction<>("Import data", BlockingMode.BLOCKING, ctx -> {
@@ -175,9 +172,8 @@ public class ActionsView extends Div {
                     return 2480;
                 });
 
-                // On click
-                Task task = action.startTask(taskList);
-                new BlockingTaskDialog(task).open();"""));
+                // In the view: starts it, follows it and opens the dialog
+                add(new ActionButton(IMPORT_DATA, taskList));"""));
     }
 
     /** Shows the given Actions instead of the demo ones, without explanations. For tests. */
@@ -204,17 +200,8 @@ public class ActionsView extends Div {
     }
 
     private Div card(AsyncAction<?> action, String kind, String explanation, String code) {
-        Signal<Boolean> running = taskList.isRunning(action);
-        Button start = new Button(running.map(r -> r ? action.name() + " running…" : "Start"));
-        start.addClickListener(e -> {
-            Task task = action.startTask(taskList);
-            if (action.blockingMode() == BlockingMode.BLOCKING) {
-                new BlockingTaskDialog(task).open();
-            }
-        });
-        start.setAriaLabel("Start " + action.name());
+        ActionButton start = new ActionButton(action, taskList);
         start.addThemeVariants(ButtonVariant.PRIMARY);
-        start.bindEnabled(Signal.not(running));
         Div card = new Div(new H2(action.name()));
         if (!kind.isEmpty()) {
             Span kindLabel = new Span(kind);

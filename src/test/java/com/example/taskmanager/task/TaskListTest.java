@@ -67,10 +67,11 @@ class TaskListTest {
         executor.runAll();
         Task failed = task(0);
 
-        taskList.retry(failed);
+        Task returned = taskList.retry(failed);
 
         assertEquals(2, taskList.tasks().peek().size());
         Task retried = task(1);
+        assertSame(retried, returned);
         assertSame(sync, retried.action());
         assertEquals(TaskState.RUNNING, retried.state().peek());
         assertEquals(TaskState.FAILED, failed.state().peek());

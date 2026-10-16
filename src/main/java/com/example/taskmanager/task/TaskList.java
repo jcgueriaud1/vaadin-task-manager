@@ -74,15 +74,15 @@ public class TaskList {
     }
 
     /**
-     * Starts a new Task of the same Action as a Failed or Cancelled Task. The old
-     * Task stays as it was.
+     * Starts a new Task of the same Action as a Failed or Cancelled Task and
+     * returns it. The old Task stays as it was.
      */
-    public void retry(Task task) {
+    public Task retry(Task task) {
         TaskState state = task.state().peek();
         if (state != TaskState.FAILED && state != TaskState.CANCELLED) {
             throw new IllegalStateException("Only a Failed or Cancelled Task can be retried");
         }
-        task.action().start(this);
+        return task.action().startTask(this);
     }
 
     /** Removes every Finished Task from the Task list. Running Tasks stay. */

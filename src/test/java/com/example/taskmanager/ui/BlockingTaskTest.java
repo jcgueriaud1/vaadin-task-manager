@@ -129,6 +129,22 @@ class BlockingTaskTest extends SpringBrowserlessTest {
     }
 
     @Test
+    void retryingABlockingTaskBlocksTheTabItWasRetriedFrom() {
+        test(startButton("Restore backup")).click();
+        executor.runAll();
+        runPendingSignalsTasks();
+        long failed = context.getBean(TaskList.class).tasks().peek().getFirst().peek().id();
+        navigate("tasks/" + failed, TasksView.class);
+        assertFalse($(Dialog.class).exists());
+
+        test($(Button.class).withText("Retry").single()).click();
+        runPendingSignalsTasks();
+
+        Dialog dialog = $(Dialog.class).single();
+        assertEquals("Restore backup", dialog.getHeaderTitle());
+    }
+
+    @Test
     void anotherTabOfTheSessionIsNotBlockedAndShowsTheTaskInItsTray() {
         UI starting = UI.getCurrent();
         UI other = openTab();

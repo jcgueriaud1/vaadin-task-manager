@@ -64,7 +64,7 @@ class TaskListTest {
             throw new IllegalStateException("Server unreachable");
         });
         executor.runAll();
-        assertTrue(failed.canRetry());
+        assertTrue(failed.retryable().peek());
 
         Task returned = taskList.retry(failed);
 
@@ -78,7 +78,7 @@ class TaskListTest {
         assertEquals(List.of("sync", "sync"), runs);
         assertEquals(TaskState.FAILED, retried.state().peek());
         assertEquals(TaskState.FAILED, failed.state().peek());
-        assertEquals("Server unreachable", failed.errorMessage().peek());
+        assertEquals(Optional.of(new Outcome.Failed("Server unreachable")), failed.outcome().peek());
     }
 
     @Test
@@ -88,7 +88,7 @@ class TaskListTest {
         }, Retry.NEVER);
         executor.runAll();
 
-        assertFalse(failed.canRetry());
+        assertFalse(failed.retryable().peek());
         assertThrows(IllegalStateException.class, () -> taskList.retry(failed));
         assertEquals(1, taskList.tasks().peek().size());
     }

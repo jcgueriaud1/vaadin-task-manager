@@ -32,6 +32,10 @@ _Avoid_: Status (reserved for status text)
 A Task that is Succeeded, Failed or Cancelled.
 _Avoid_: Done task, completed task (Succeeded is the success case only)
 
+**Outcome**:
+How a Finished Task ended: Succeeded, with its Result summary if it has one; Failed, with the error that stopped it; or Cancelled.
+_Avoid_: Result, end state
+
 **Cancellation**:
 The user asks a Running Task to stop. The Task becomes Cancelled when its Action stops.
 _Avoid_: Abort, kill

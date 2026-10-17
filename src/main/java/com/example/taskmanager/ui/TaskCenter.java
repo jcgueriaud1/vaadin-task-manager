@@ -6,7 +6,6 @@ import java.util.stream.Stream;
 
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
-import com.example.taskmanager.task.TaskState;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
@@ -87,9 +86,9 @@ public class TaskCenter extends Div {
     private static List<Task> shown(TaskList taskList) {
         List<Task> newestFirst = taskList.tasks().getValues().toList().reversed();
         Stream<Task> running = newestFirst.stream()
-                .filter(task -> task.state().get() == TaskState.RUNNING);
+                .filter(task -> task.running().get());
         Stream<Task> finished = newestFirst.stream()
-                .filter(task -> task.state().get() != TaskState.RUNNING)
+                .filter(task -> !task.running().get())
                 .limit(RECENT_FINISHED);
         return Stream.concat(running, finished).toList();
     }

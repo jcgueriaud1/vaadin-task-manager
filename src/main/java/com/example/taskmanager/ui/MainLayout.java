@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.example.taskmanager.task.Outcome;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.vaadin.flow.component.AttachEvent;
@@ -126,11 +127,12 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     /** The Result summary of a Succeeded Task, the error of a Failed one. */
     private static String body(Task task) {
-        return switch (task.state().peek()) {
-            case SUCCEEDED -> task.resultSummary().peek().isEmpty() ? "Succeeded" : task.resultSummary().peek();
-            case FAILED -> task.errorMessage().peek();
-            case CANCELLED -> "Cancelled";
-            case RUNNING -> throw new IllegalStateException("A Running Task is never Unseen");
+        Outcome outcome = task.outcome().peek()
+                .orElseThrow(() -> new IllegalStateException("A Running Task is never Unseen"));
+        return switch (outcome) {
+            case Outcome.Succeeded succeeded -> succeeded.resultSummary().isEmpty() ? "Succeeded" : succeeded.resultSummary();
+            case Outcome.Failed failed -> failed.errorMessage();
+            case Outcome.Cancelled cancelled -> "Cancelled";
         };
     }
 

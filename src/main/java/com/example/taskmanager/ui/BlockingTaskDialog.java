@@ -2,7 +2,6 @@ package com.example.taskmanager.ui;
 
 import com.example.taskmanager.task.BlockingMode;
 import com.example.taskmanager.task.Task;
-import com.example.taskmanager.task.TaskState;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Span;
@@ -35,7 +34,7 @@ public class BlockingTaskDialog extends Dialog {
         add(TaskTray.progress(task), statusText);
         getFooter().add(new Button("Cancel", e -> task.cancel()));
         Signal.effect(this, () -> {
-            if (task.state().get() != TaskState.RUNNING) {
+            if (!task.running().get()) {
                 close();
             }
         });

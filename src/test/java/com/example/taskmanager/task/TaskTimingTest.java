@@ -8,6 +8,9 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
+
 class TaskTimingTest {
 
     private static final Instant START = Instant.parse("2026-10-15T09:00:00Z");
@@ -15,6 +18,7 @@ class TaskTimingTest {
     private final TestExecutor executor = new TestExecutor();
     private final TestClock clock = new TestClock(START);
     private final TaskList taskList = new TaskList(clock);
+    private final ValueSignal<Instant> now = new ValueSignal<>(START);
     private final Action report = new Action("Generate report", BlockingMode.NON_BLOCKING);
 
     @Test
@@ -23,16 +27,17 @@ class TaskTimingTest {
             executor.pause();
             clock.advance(Duration.ofSeconds(30));
         });
+        Signal<Duration> elapsed = task.elapsed(now);
         executor.runNext();
-        clock.advance(Duration.ofSeconds(12));
+        tick(Duration.ofSeconds(12));
 
         assertEquals(START, task.startedAt());
-        assertEquals(Duration.ofSeconds(12), task.elapsed(clock.instant()));
+        assertEquals(Duration.ofSeconds(12), elapsed.peek());
 
         executor.resume();
-        clock.advance(Duration.ofMinutes(5));
+        tick(Duration.ofMinutes(5));
 
-        assertEquals(Duration.ofSeconds(42), task.elapsed(clock.instant()));
+        assertEquals(Duration.ofSeconds(42), elapsed.peek());
     }
 
     @Test
@@ -46,17 +51,23 @@ class TaskTimingTest {
             executor.pause();
             ctx.setProgress(1);
         });
-        assertEquals(Optional.empty(), task.timeLeft(clock.instant()));
+        Signal<Optional<Duration>> timeLeft = task.timeLeft(now);
+        assertEquals(Optional.empty(), timeLeft.peek());
 
         executor.runNext();
-        assertEquals(Optional.empty(), task.timeLeft(clock.instant()), "5% is not above 5%");
+        now.set(clock.instant());
+        assertEquals(Optional.empty(), timeLeft.peek(), "5% is not above 5%");
 
         executor.resume();
-        assertEquals(Optional.of(Duration.ofSeconds(30)), task.timeLeft(clock.instant()),
-                "a quarter done in 10 s leaves 30 s");
+        now.set(clock.instant());
+        assertEquals(Optional.of(Duration.ofSeconds(30)), timeLeft.peek(), "a quarter done in 10 s leaves 30 s");
+
+        tick(Duration.ofSeconds(10));
+        assertEquals(Optional.of(Duration.ofSeconds(60)), timeLeft.peek(),
+                "the estimate follows the clock: a quarter done in 20 s leaves 60 s");
 
         executor.resume();
-        assertEquals(Optional.empty(), task.timeLeft(clock.instant()), "a Finished Task has none");
+        assertEquals(Optional.empty(), timeLeft.peek(), "a Finished Task has none, without a tick");
     }
 
     @Test
@@ -66,9 +77,15 @@ class TaskTimingTest {
             executor.pause();
         });
         executor.runNext();
-        clock.advance(Duration.ofSeconds(10));
+        tick(Duration.ofSeconds(10));
 
-        assertEquals(Optional.empty(), task.timeLeft(clock.instant()));
+        assertEquals(Optional.empty(), task.timeLeft(now).peek());
+    }
+
+    /** Moves the clock and the ticking "now" a view would follow. */
+    private void tick(Duration duration) {
+        clock.advance(duration);
+        now.set(clock.instant());
     }
 
 }

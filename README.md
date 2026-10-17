@@ -14,8 +14,8 @@ after a quiet spell can take about a minute while it wakes up.
 
 The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
 
-- **Actions page** (`/`): start each demo **Action**. Each one runs as a **Task** on its own virtual thread.
-  Some report **Progress**, one fails at random and one is a **Blocking Task**, which covers its tab with a
+- **Actions page** (`/`): start each demo **Action** with a regular button. The view starts a **Task** and runs
+  its work on a virtual thread. Some report **Progress**, one fails at random and one is a **Blocking Task**, which covers its tab with a
   dialog until it finishes or is cancelled.
 - **Tray and task center**: every view has a tray of the session's Tasks with a progress ring, their **Status
   text** and Progress, and a navbar button that says how many Tasks are Running, with a ring for their overall
@@ -43,105 +43,106 @@ src/main/java/com/example/taskmanager/
 └── TaskConfig.java  # the executor, the clock and the session-scoped Task list
 ```
 
-## Creating Async Actions
+## Running work as Tasks
 
-An **Action** is defined once from three things: a name, a `BlockingMode` and a work function. The work runs
-on a virtual thread, so it can block (I/O, `Thread.sleep`, calls to slow services). It reports back through
-the context it gets. The demo Actions are `static final` constants in
+You don't hand your work to the Task list. You start a **Task** in it, run the work yourself, on whatever
+thread you like, and report through the Task. Every view follows the Task's signals: the tray, the task center,
+the Background tasks page and the blocking dialog. The demo is in
 [`ActionsView`](src/main/java/com/example/taskmanager/ui/ActionsView.java), and the Actions page shows each
-one's code next to its start button.
+Action's code next to its start button. [ADR 0002](docs/adr/0002-application-runs-the-work-of-tasks.md)
+explains why it works this way.
 
-Keep each Action in a constant or a singleton. `TaskList` recognises an Action by identity, which is how
-it allows at most one Running Task per Action and how Retry finds the Action again. If you create the
-Action inside a view's constructor, every tab and every visit gets a new one.
+### 1. Define an Action
 
-There are two classes, depending on whether the Action reports **Progress**:
-
-| Class                    | Context the work gets | What the work can do                                       |
-|--------------------------|-----------------------|------------------------------------------------------------|
-| `AsyncAction<T>`         | `TaskContext`         | `setStatusText`, `setResultSummary`, `isCancelled`         |
-| `AsyncProgressAction<T>` | `ProgressContext`     | the same, plus `setProgress(double)` from 0 to 1           |
-
-Either one can be `BlockingMode.NON_BLOCKING` or `BlockingMode.BLOCKING`, which gives four kinds of Action.
-
-### Non-blocking, without Progress
-
-The tray shows a spinning ring and the Status text.
+An **Action** is a name and a `BlockingMode`, nothing more:
 
 ```java
-static final AsyncAction<Integer> SEND_NEWSLETTER = new AsyncAction<>(
-        "Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
-            ctx.setStatusText("Sending emails");
-            int sent = mailer.sendAll();            // any blocking work
-            ctx.setResultSummary("Sent to " + sent + " subscribers");
-            return sent;
-        });
+static final Action IMPORT_DATA = new Action("Import data", BlockingMode.BLOCKING);
 ```
 
-### Non-blocking, with Progress
+Two Actions with the same name and mode are the same Action. The Task list allows at most one Running Task
+of it per session.
 
-Use `AsyncProgressAction` and call `setProgress` as the work goes. Values outside 0..1 are clamped.
+### 2. Write the work
+
+The work is a `Consumer<TaskContext>`. It can block (I/O, `Thread.sleep`, calls to slow services) and reports
+through its context:
+
+| `TaskContext` method       | What it does                                                                 |
+|----------------------------|------------------------------------------------------------------------------|
+| `setStatusText(String)`    | the short line that says what the Task is doing now                          |
+| `setProgress(double)`      | how much is done, from 0 to 1, clamped. Until the first call, the Task is indeterminate |
+| `setResultSummary(String)` | what a Succeeded Task produced, for example "2,480 records"                  |
+| `isCancelled()`            | whether the user asked it to stop, for work that rarely reports              |
 
 ```java
-static final AsyncProgressAction<Integer> GENERATE_REPORT = new AsyncProgressAction<>(
-        "Generate report", BlockingMode.NON_BLOCKING, ctx -> {
-            for (int page = 1; page <= 10; page++) {
-                ctx.setStatusText("Rendering page " + page + " of 10");
-                renderPage(page);
-                ctx.setProgress(page / 10.0);
-            }
-            ctx.setResultSummary("10 pages");
-            return 10;
-        });
+static void importData(TaskContext ctx) {
+    for (int file = 1; file <= 8; file++) {
+        ctx.setStatusText("Importing file " + file + " of 8");
+        importFile(file);
+        ctx.setProgress(file / 8.0);
+    }
+    ctx.setResultSummary("2,480 records");
+}
 ```
 
-### Blocking
+### 3. Start a Task and run the work
 
-`BlockingMode.BLOCKING` marks a Task that the user must wait for. When it starts from a tab, a
-`BlockingTaskDialog` covers that tab until the Task finishes or the user cancels it. Other tabs of the session
-stay usable. Retrying a Blocking Task from the Background tasks page blocks that tab the same way.
+`taskList.start(action, retry)` adds a Running Task and returns it. Then run the work with
+`task.run(work)` on any thread. `run` ends the Task with the work's outcome: Succeeded if it returns, Cancelled
+if the user cancelled it, and Failed if it throws. The `retry` callback is how the Background tasks page
+Retries the Task: it should start a new Task the same way. Pass none, or use `taskList.start(action)`, and the
+Task can't be retried.
 
 ```java
-static final AsyncProgressAction<Integer> IMPORT_DATA = new AsyncProgressAction<>(
-        "Import data", BlockingMode.BLOCKING, ctx -> { /* ... */ return 2480; });
+Task start() {
+    Task task = taskList.start(IMPORT_DATA, this::start);
+    Thread.startVirtualThread(() -> task.run(ActionsView::importData));
+    return task;
+}
 ```
 
-### Starting an Action from a view
-
-Inject the session's `TaskList` into the view and add an `ActionButton`:
+Spring's `@Async` works just as well:
 
 ```java
-add(new ActionButton(IMPORT_DATA, taskList));            // says "Start"
-add(new ActionButton(IMPORT_DATA, taskList, "Import"));  // your own text
+@Service
+class Importer {
+    @Async
+    public void importData(Task task) {
+        task.run(ctx -> { /* ... */ });
+    }
+}
 ```
 
-The button does the rest:
+The demo runs its work on an injected `Executor` bean, so that the tests can replace it and step through the
+work.
 
-- while the Action has a Running Task, in any tab of the session, it says "Import data running…" and is
-  disabled, so the Action never runs twice
-- a click starts a Task, and opens the `BlockingTaskDialog` if the Action is Blocking
-- its accessible name is "Start Import data", whatever its text.
+### 4. Start it from a view
 
-It is a regular Vaadin `Button`, so you can add theme variants, an icon or a tooltip.
+Use a regular `Button`. Bind it to `taskList.isRunning(action)` so the Action never runs twice, and open a
+`BlockingTaskDialog` if the Action is Blocking:
 
-### Starting an Action from code
+```java
+Button button = new Button("Start", e -> BlockingTaskDialog.openIfBlocking(start()));
+Signal<Boolean> running = taskList.isRunning(IMPORT_DATA);
+button.bindText(running.map(r -> r ? "Import data running…" : "Start"));
+button.bindEnabled(Signal.not(running));
+```
 
-Outside a view, for example from a scheduled job or a service, call the Action directly. These never open a
-dialog:
+A Blocking Task covers the tab that started it until it finishes or the user cancels it. Other tabs of the
+session stay usable. Retrying a Blocking Task from the Background tasks page blocks that tab the same way.
 
-- `action.startTask(taskList)` returns the `Task`.
-- `action.start(taskList)` returns a `CompletableFuture<T>` with the work's value. Cancelling the future
-  cancels the Task.
-
-Starting an Action that already has a Running Task throws an `IllegalStateException`.
+Starting an Action that already has a Running Task throws an `IllegalStateException`. A disabled button
+never gets there: Vaadin drops clicks on disabled components.
 
 ### Failure and Cancellation
 
 - **Failure**: any exception the work throws makes the Task Failed, with the exception's message as its error.
-  Users can Retry it from the Background tasks page.
+  The stack trace goes to the server log. Users can Retry it from the Background tasks page.
 - **Cancellation**: when the user cancels, the next `setStatusText`, `setResultSummary` or `setProgress` call
   throws a `CancellationException` and the Task ends Cancelled. Work that rarely reports should check
   `ctx.isCancelled()` and return early. Work that ignores both still ends Cancelled, but only when it returns.
+- A Task whose work is never run stays Running.
 
 ## Running the application
 

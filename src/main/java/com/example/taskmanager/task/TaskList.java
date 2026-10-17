@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
-import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ListSignal;
@@ -16,28 +16,22 @@ public class TaskList {
     /** The Task list keeps at most this many Tasks, evicting the oldest Finished Task first. */
     public static final int MAX_TASKS = 50;
 
-    private final Executor executor;
     private final Clock clock;
     private final ListSignal<Task> tasks = new ListSignal<>();
     private final List<Tab> tabs = new ArrayList<>();
     private long nextId = 1;
 
-    public TaskList(Executor executor) {
-        this(executor, Clock.systemDefaultZone());
+    public TaskList() {
+        this(Clock.systemDefaultZone());
     }
 
     /** A Task list whose Tasks take their start and finish times from the clock. */
-    public TaskList(Executor executor, Clock clock) {
-        this.executor = executor;
+    public TaskList(Clock clock) {
         this.clock = clock;
     }
 
     public ListSignal<Task> tasks() {
         return tasks;
-    }
-
-    Executor executor() {
-        return executor;
     }
 
     /** The Task with the given id, if it is still in this list. */
@@ -46,9 +40,9 @@ public class TaskList {
     }
 
     /** Whether the given Action has a Running Task in this list. */
-    public Signal<Boolean> isRunning(AsyncAction<?> action) {
+    public Signal<Boolean> isRunning(Action action) {
         return Signal.computed(() -> tasks.getValues()
-                .anyMatch(task -> task.action() == action && task.state().get() == TaskState.RUNNING));
+                .anyMatch(task -> task.action().equals(action) && task.state().get() == TaskState.RUNNING));
     }
 
     /** How many Tasks in this list are Running. */
@@ -74,15 +68,18 @@ public class TaskList {
     }
 
     /**
-     * Starts a new Task of the same Action as a Failed or Cancelled Task and
-     * returns it. The old Task stays as it was.
+     * Starts a new Task of the same Action as a Failed or Cancelled Task, through
+     * the retry callback it was started with, and returns it. The old Task stays
+     * as it was.
+     *
+     * @throws IllegalStateException if the Task is not Failed or Cancelled, or has no retry callback
      */
     public Task retry(Task task) {
         TaskState state = task.state().peek();
         if (state != TaskState.FAILED && state != TaskState.CANCELLED) {
             throw new IllegalStateException("Only a Failed or Cancelled Task can be retried");
         }
-        return task.action().startTask(this);
+        return task.retry();
     }
 
     /** Removes every Finished Task from the Task list. Running Tasks stay. */
@@ -99,7 +96,7 @@ public class TaskList {
     public Signal<Optional<Double>> overallProgress() {
         return Signal.computed(() -> {
             OptionalDouble average = tasks.getValues()
-                    .filter(task -> task.action().reportsProgress() && task.state().get() == TaskState.RUNNING)
+                    .filter(task -> task.state().get() == TaskState.RUNNING && task.reportsProgress().get())
                     .mapToDouble(task -> task.progress().get())
                     .average();
             return average.isPresent() ? Optional.of(average.getAsDouble()) : Optional.empty();
@@ -154,13 +151,26 @@ public class TaskList {
     }
 
     /**
-     * Adds a new Running Task of the Action, refusing if the Action already has
-     * one: an Action has at most one Running Task per session. When the list is
-     * full, the oldest Finished Task makes room.
+     * Adds a new Running Task of the Action, without Retry. See {@link #start(Action, Supplier)}.
      */
-    synchronized Task add(AsyncAction<?> action) {
+    public Task start(Action action) {
+        return start(action, null);
+    }
+
+    /**
+     * Adds a new Running Task of the Action and returns it, for the application to
+     * run its work with {@link Task#run}. Nothing runs until it does.
+     * <p>
+     * An Action has at most one Running Task per session. When the list is full,
+     * the oldest Finished Task makes room.
+     *
+     * @param retry starts a new Task of the Action, the same way, when the user
+     *              Retries this one; {@code null} if it can't be retried
+     * @throws IllegalStateException if the Action already has a Running Task
+     */
+    public synchronized Task start(Action action, Supplier<Task> retry) {
         boolean running = tasks.peekValues()
-                .anyMatch(task -> task.action() == action && task.state().peek() == TaskState.RUNNING);
+                .anyMatch(task -> task.action().equals(action) && task.state().peek() == TaskState.RUNNING);
         if (running) {
             throw new IllegalStateException(action.name() + " already has a Running Task");
         }
@@ -171,7 +181,7 @@ public class TaskList {
                     .orElseThrow(() -> new IllegalStateException(MAX_TASKS + " Tasks are already Running"));
             tasks.remove(oldestFinished);
         }
-        Task task = new Task(nextId++, action, clock);
+        Task task = new Task(nextId++, action, this, retry, clock);
         tasks.insertLast(task);
         return task;
     }

@@ -125,13 +125,14 @@ public class TaskTray extends Div {
      * files" or "Failed · Server unreachable" once Finished.
      */
     static Div meta(Task task) {
-        boolean reportsProgress = task.action().reportsProgress();
+        Signal<Boolean> showsPercent = Signal.computed(
+                () -> task.state().get() == TaskState.RUNNING && task.reportsProgress().get());
         Span state = new Span(task.state().map(TaskTray::label));
         state.addClassName("task-state");
-        state.bindVisible(task.state().map(s -> s != TaskState.RUNNING || !reportsProgress));
+        state.bindVisible(Signal.not(showsPercent));
         Span percent = new Span(task.progress().map(p -> Math.round(p * 100) + "%"));
         percent.addClassName("task-percent");
-        percent.bindVisible(task.state().map(s -> s == TaskState.RUNNING && reportsProgress));
+        percent.bindVisible(showsPercent);
         Span statusText = new Span(task.statusText());
         statusText.addClassName("task-status-text");
         statusText.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
@@ -148,9 +149,7 @@ public class TaskTray extends Div {
 
     /** A ring while the Task is Running, then an icon for how it finished. */
     static Div indicator(Task task) {
-        ProgressRing ring = task.action().reportsProgress()
-                ? new ProgressRing(task.progress())
-                : new ProgressRing();
+        ProgressRing ring = new ProgressRing(task.progress(), task.reportsProgress());
         ring.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
         Div indicator = new Div(ring,
                 stateIcon(task, TaskState.SUCCEEDED, VaadinIcon.CHECK_CIRCLE),
@@ -168,15 +167,12 @@ public class TaskTray extends Div {
         return icon;
     }
 
-    /** Determinate if the Task's Action reports Progress, indeterminate otherwise; shown while Running. */
+    /** Indeterminate until the Task's work reports Progress; shown while Running. */
     static ProgressBar progress(Task task) {
         ProgressBar bar = new ProgressBar();
         bar.addClassName("task-progress");
-        if (task.action().reportsProgress()) {
-            bar.bindValue(task.progress());
-        } else {
-            bar.setIndeterminate(true);
-        }
+        bar.bindValue(task.progress());
+        Signal.effect(bar, () -> bar.setIndeterminate(!task.reportsProgress().get()));
         bar.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
         return bar;
     }

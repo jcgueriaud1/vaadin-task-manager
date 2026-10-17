@@ -1,6 +1,6 @@
 package com.example.taskmanager.task;
 
-/** What an Action's work function can do with the Task it runs in. */
+/** What the work of a Task can report through {@link Task#run(java.util.function.Consumer)}. */
 public interface TaskContext {
 
     /**
@@ -9,6 +9,14 @@ public interface TaskContext {
      * @throws java.util.concurrent.CancellationException if the Task was cancelled
      */
     void setStatusText(String statusText);
+
+    /**
+     * Sets how much of the Task is done, from 0 to 1. Values outside are clamped.
+     * Until the work first calls this, the Task shows as indeterminate.
+     *
+     * @throws java.util.concurrent.CancellationException if the Task was cancelled
+     */
+    void setProgress(double progress);
 
     /**
      * Sets the short text a Succeeded Task ends with, describing what it produced.

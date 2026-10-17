@@ -11,19 +11,23 @@ public class ProgressRing extends Span {
 
     private double value;
 
-    /** Follows the given Progress, from 0 to 1. */
-    public ProgressRing(Signal<Double> progress) {
+    /**
+     * Follows the given Progress, from 0 to 1, while it is determinate, and spins
+     * otherwise, for example until a Task's work first reports Progress.
+     */
+    public ProgressRing(Signal<Double> progress, Signal<Boolean> determinate) {
         addClassName("progress-ring");
+        bindClassName("indeterminate", Signal.not(determinate));
         getElement().setAttribute("role", "progressbar");
         getElement().setAttribute("aria-valuemin", "0");
         getElement().setAttribute("aria-valuemax", "100");
-        Signal.effect(this, () -> setValue(progress.get()));
-    }
-
-    /** Spins without a value, for Tasks whose Action doesn't report Progress. */
-    public ProgressRing() {
-        addClassNames("progress-ring", "indeterminate");
-        getElement().setAttribute("role", "progressbar");
+        Signal.effect(this, () -> {
+            if (determinate.get()) {
+                setValue(progress.get());
+            } else {
+                getElement().removeAttribute("aria-valuenow");
+            }
+        });
     }
 
     public boolean isIndeterminate() {

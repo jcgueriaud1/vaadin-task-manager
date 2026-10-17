@@ -155,7 +155,8 @@ public class TasksView extends Div implements BeforeEnterObserver {
         cancel.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
         Button retry = new Button("Retry", e -> BlockingTaskDialog.openIfBlocking(taskList.retry(task)));
         retry.addThemeVariants(ButtonVariant.PRIMARY);
-        retry.bindVisible(task.state().map(s -> s == TaskState.FAILED || s == TaskState.CANCELLED));
+        retry.bindVisible(task.state().map(
+                s -> task.canRetry() && (s == TaskState.FAILED || s == TaskState.CANCELLED)));
         retry.bindEnabled(Signal.not(taskList.isRunning(task.action())));
         Div buttons = new Div(cancel, retry);
         buttons.addClassName("task-detail-buttons");

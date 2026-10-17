@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,17 +15,14 @@ class TaskTimingTest {
 
     private final TestExecutor executor = new TestExecutor();
     private final TestClock clock = new TestClock(START);
-    private final TaskList taskList = new TaskList(executor, clock);
+    private final TaskList taskList = new TaskList(clock);
 
     @Test
     void aRunningTaskHasRunSinceItStartedAndAFinishedOneKeepsHowLongItTook() {
-        var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+        Task task = start(ctx -> {
             executor.pause();
             clock.advance(Duration.ofSeconds(30));
-            return null;
         });
-        action.start(taskList);
-        Task task = task();
         executor.runNext();
         clock.advance(Duration.ofSeconds(12));
 
@@ -39,7 +37,7 @@ class TaskTimingTest {
 
     @Test
     void timeLeftIsAStraightLineEstimateFromProgressShownOnlyAboveFivePercent() {
-        var action = new AsyncProgressAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> {
+        Task task = start(ctx -> {
             clock.advance(Duration.ofSeconds(2));
             ctx.setProgress(0.05);
             executor.pause();
@@ -47,10 +45,7 @@ class TaskTimingTest {
             ctx.setProgress(0.25);
             executor.pause();
             ctx.setProgress(1);
-            return null;
         });
-        action.start(taskList);
-        Task task = task();
         assertEquals(Optional.empty(), task.timeLeft(clock.instant()));
 
         executor.runNext();
@@ -66,18 +61,19 @@ class TaskTimingTest {
 
     @Test
     void aTaskWithoutProgressHasNoTimeLeft() {
-        var action = new AsyncAction<>("Send newsletter", BlockingMode.NON_BLOCKING, ctx -> {
+        Task task = start(ctx -> {
+            ctx.setStatusText("Sending emails");
             executor.pause();
-            return null;
         });
-        action.start(taskList);
         executor.runNext();
         clock.advance(Duration.ofSeconds(10));
 
-        assertEquals(Optional.empty(), task().timeLeft(clock.instant()));
+        assertEquals(Optional.empty(), task.timeLeft(clock.instant()));
     }
 
-    private Task task() {
-        return taskList.tasks().peekValues().findFirst().orElseThrow();
+    private Task start(Consumer<TaskContext> work) {
+        Task task = taskList.start(new Action("Generate report", BlockingMode.NON_BLOCKING));
+        executor.execute(() -> task.run(work));
+        return task;
     }
 }

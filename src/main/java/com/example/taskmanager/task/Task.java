@@ -5,20 +5,37 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
-/** One run of an Action. Its fixed fields never change; the rest are signals. */
+/**
+ * One run of an Action. Its fixed fields never change; the rest are signals,
+ * which every view follows: the tray, the task center, the Background tasks
+ * page and the {@code BlockingTaskDialog}.
+ * <p>
+ * The application runs the work itself, on any thread, by passing it to
+ * {@link #run(Consumer)}.
+ */
 public final class Task {
+
+    private static final Logger log = LoggerFactory.getLogger(Task.class);
 
     private static final double MIN_PROGRESS_FOR_ESTIMATE = 0.05;
 
     private final long id;
-    private final AsyncAction<?> action;
+    private final Action action;
+    private final TaskList taskList;
+    private final Supplier<Task> retry;
     private final ValueSignal<TaskState> state = new ValueSignal<>(TaskState.RUNNING);
     private final ValueSignal<String> statusText = new ValueSignal<>("");
     private final ValueSignal<Double> progress = new ValueSignal<>(0.0);
+    private final ValueSignal<Boolean> reportsProgress = new ValueSignal<>(false);
     private final ValueSignal<String> resultSummary = new ValueSignal<>("");
     private final ValueSignal<String> errorMessage = new ValueSignal<>("");
     private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
@@ -28,9 +45,11 @@ public final class Task {
     private volatile Instant finishedAt;
     private volatile boolean cancelled;
 
-    Task(long id, AsyncAction<?> action, Clock clock) {
+    Task(long id, Action action, TaskList taskList, Supplier<Task> retry, Clock clock) {
         this.id = id;
         this.action = action;
+        this.taskList = taskList;
+        this.retry = retry;
         this.clock = clock;
         this.startedAt = clock.instant();
     }
@@ -40,7 +59,7 @@ public final class Task {
         return id;
     }
 
-    public AsyncAction<?> action() {
+    public Action action() {
         return action;
     }
 
@@ -56,11 +75,11 @@ public final class Task {
 
     /**
      * A straight-line estimate of how long a Running Task still needs, from its
-     * Progress so far. Empty unless its Action reports Progress and it is above 5%.
+     * Progress so far. Empty unless its work reports Progress and it is above 5%.
      */
     public Optional<Duration> timeLeft(Instant now) {
         double done = progress.peek();
-        if (!action.reportsProgress() || state.peek() != TaskState.RUNNING || done <= MIN_PROGRESS_FOR_ESTIMATE) {
+        if (!reportsProgress.peek() || state.peek() != TaskState.RUNNING || done <= MIN_PROGRESS_FOR_ESTIMATE) {
             return Optional.empty();
         }
         long elapsedMillis = elapsed(now).toMillis();
@@ -75,9 +94,19 @@ public final class Task {
         return statusText.asReadonly();
     }
 
-    /** How much of the Task is done, from 0 to 1. Only meaningful if its Action reports Progress. */
+    /** How much of the Task is done, from 0 to 1. Only meaningful once it {@link #reportsProgress()}. */
     public Signal<Double> progress() {
         return progress.asReadonly();
+    }
+
+    /** Whether the work has reported Progress yet. Until it does, the Task shows as indeterminate. */
+    public Signal<Boolean> reportsProgress() {
+        return reportsProgress.asReadonly();
+    }
+
+    /** Whether whoever started the Task said how to Retry it. */
+    public boolean canRetry() {
+        return retry != null;
     }
 
     /** What a Succeeded Task produced, or empty if its Action didn't say. */
@@ -108,8 +137,40 @@ public final class Task {
         cancelled = true;
     }
 
-    ProgressContext context() {
-        return new ProgressContext() {
+    /**
+     * Runs the work on the calling thread and ends the Task with its outcome:
+     * Succeeded if it returns, Cancelled if the user cancelled it, and Failed,
+     * with the exception's message, if it throws. Call it from the thread the
+     * application chose, for example {@code Thread.startVirtualThread(() -> task.run(work))}
+     * or an {@code @Async} method. It never throws: a failure is logged.
+     */
+    public void run(Consumer<? super TaskContext> work) {
+        try {
+            TaskContext context = context();
+            work.accept(context);
+            if (context.isCancelled()) {
+                throw new CancellationException();
+            }
+            succeed();
+        } catch (CancellationException e) {
+            markCancelled();
+        } catch (RuntimeException e) {
+            log.error("Task of {} failed", action.name(), e);
+            fail(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
+        taskList.finished(this);
+    }
+
+    /** Starts a new Task through the callback given when this one was started. */
+    Task retry() {
+        if (retry == null) {
+            throw new IllegalStateException("Whoever started this Task didn't say how to Retry it");
+        }
+        return retry.get();
+    }
+
+    private TaskContext context() {
+        return new TaskContext() {
             @Override
             public void setStatusText(String text) {
                 throwIfCancelled();
@@ -126,6 +187,7 @@ public final class Task {
             public void setProgress(double value) {
                 throwIfCancelled();
                 progress.set(Math.clamp(value, 0.0, 1.0));
+                reportsProgress.set(true);
             }
 
             @Override
@@ -141,18 +203,18 @@ public final class Task {
         }
     }
 
-    void succeed() {
+    private void succeed() {
         finishedAt = clock.instant();
         state.set(TaskState.SUCCEEDED);
     }
 
-    void fail(String message) {
+    private void fail(String message) {
         finishedAt = clock.instant();
         errorMessage.set(message);
         state.set(TaskState.FAILED);
     }
 
-    void markCancelled() {
+    private void markCancelled() {
         finishedAt = clock.instant();
         state.set(TaskState.CANCELLED);
     }

@@ -1,7 +1,6 @@
 package com.example.taskmanager;
 
 import java.time.Clock;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -14,7 +13,10 @@ import com.vaadin.flow.spring.annotation.VaadinSessionScope;
 @Configuration
 public class TaskConfig {
 
-    /** Runs the work of every Task on its own virtual thread. */
+    /**
+     * Where the Actions page runs the work of its Tasks: each on its own virtual
+     * thread. The Task list doesn't use it; tests replace it to step through work.
+     */
     @Bean
     public ExecutorService taskExecutor() {
         return Executors.newVirtualThreadPerTaskExecutor();
@@ -29,7 +31,7 @@ public class TaskConfig {
     /** The Task list of the current session, shared by all its browser tabs (ADR 0001). */
     @Bean
     @VaadinSessionScope
-    public TaskList taskList(Executor executor, Clock clock) {
-        return new TaskList(executor, clock);
+    public TaskList taskList(Clock clock) {
+        return new TaskList(clock);
     }
 }

@@ -118,13 +118,13 @@ class TaskTrayTest extends SpringBrowserlessTest {
 
         test(startButton("Export data")).click();
         runPendingSignalsTasks();
-        assertFalse(rowIndicator("Export data").isIndeterminate());
-        assertEquals(0.0, rowIndicator("Export data").getValue());
-        assertTrue(overallBarShown());
-        assertEquals(0.0, overallBar().getValue());
+        assertTrue(rowIndicator("Export data").isIndeterminate(), "its work hasn't reported Progress yet");
+        assertFalse(overallBarShown());
 
         executor.runNext();
         runPendingSignalsTasks();
+        assertFalse(rowIndicator("Export data").isIndeterminate());
+        assertTrue(overallBarShown());
         assertEquals(0.5, rowIndicator("Export data").getValue());
         assertEquals(0.5, overallBar().getValue());
         assertFalse(row("Export data").getElement().getTextRecursively().contains("3 CSV files"));

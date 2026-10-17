@@ -1,6 +1,7 @@
 package com.example.taskmanager.ui;
 
 import com.example.taskmanager.task.TaskList;
+import com.example.taskmanager.task.TestExecutor;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
@@ -9,7 +10,7 @@ import com.vaadin.flow.router.Route;
 @PageTitle("Actions")
 public class TestActionsView extends ActionsView {
 
-    public TestActionsView(TaskList taskList, TestTaskConfig.TestActions testActions) {
-        super(taskList, testActions.actions());
+    public TestActionsView(TaskList taskList, TestExecutor executor, TestTaskConfig.TestActions testActions) {
+        super(taskList, executor, testActions.demos());
     }
 }

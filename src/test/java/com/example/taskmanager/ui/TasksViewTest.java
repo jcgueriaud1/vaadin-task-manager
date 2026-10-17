@@ -16,6 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 
+import com.example.taskmanager.task.Action;
+import com.example.taskmanager.task.BlockingMode;
+import com.example.taskmanager.task.Retry;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TestClock;
@@ -207,6 +210,20 @@ class TasksViewTest extends SpringBrowserlessTest {
         runPendingSignalsTasks();
         assertEquals(List.of("Running (0)", "Succeeded (0)", "Failed (2)", "Cancelled (0)"), tabLabels());
         assertTrue(detailButton("Retry").single().isEnabled());
+    }
+
+    @Test
+    void aTaskStartedAsNeverRetryableHasNoRetry() {
+        Task task = taskList().start(new Action("Rebuild index", BlockingMode.NON_BLOCKING), executor,
+                ctx -> ctx.setStatusText("Reading documents"), Retry.NEVER);
+        task.cancel();
+        executor.runAll();
+        navigate(TasksView.class);
+        selectTab("Cancelled");
+        select("Rebuild index");
+
+        assertEquals("Cancelled", detail("task-state"));
+        assertFalse(detailButton("Retry").exists());
     }
 
     @Test

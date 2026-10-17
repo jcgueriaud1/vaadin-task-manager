@@ -1,7 +1,6 @@
 package com.example.taskmanager.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -39,12 +38,9 @@ class DemoActionsViewTest extends SpringBrowserlessTest {
     }
 
     @Test
-    void theDemoActionsCoverEachKind() {
-        assertFalse(ActionsView.SEND_NEWSLETTER.reportsProgress());
+    void theDemoActionsCoverEachBlockingMode() {
         assertEquals(BlockingMode.NON_BLOCKING, ActionsView.SEND_NEWSLETTER.blockingMode());
-        assertTrue(ActionsView.GENERATE_REPORT.reportsProgress());
         assertEquals(BlockingMode.NON_BLOCKING, ActionsView.GENERATE_REPORT.blockingMode());
-        assertTrue(ActionsView.IMPORT_DATA.reportsProgress());
         assertEquals(BlockingMode.BLOCKING, ActionsView.IMPORT_DATA.blockingMode());
     }
 }

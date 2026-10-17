@@ -9,11 +9,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 
+import com.example.taskmanager.task.Action;
+import com.example.taskmanager.task.BlockingMode;
+import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TestExecutor;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dialog.Dialog;
 
 @SpringBootTest
 @Import(TestTaskConfig.class)
@@ -21,6 +26,9 @@ class ActionsViewTest extends SpringBrowserlessTest {
 
     @Autowired
     private TestExecutor executor;
+
+    @Autowired
+    private ApplicationContext context;
 
     @BeforeEach
     void open() {
@@ -102,6 +110,21 @@ class ActionsViewTest extends SpringBrowserlessTest {
         assertTrue(tray.contains("Failed"), tray);
         assertTrue(tray.contains("Server unreachable"), tray);
         assertTrue(sync.isEnabled());
+    }
+
+    @Test
+    void aClickThatLosesTheRaceWithAnotherTabIsDroppedAsTheButtonIsAlreadyLocked() {
+        Button importData = startButton("Import data");
+        // Another tab starts it while this tab's click is on its way to the server
+        context.getBean(TaskList.class).start(new Action("Import data", BlockingMode.BLOCKING), executor, ctx -> {});
+
+        assertFalse(importData.isEnabled());
+        importData.click();
+        runPendingSignalsTasks();
+
+        assertEquals(1, executor.queued(), "only the other tab's Task");
+        assertFalse($(Dialog.class).exists());
+        assertEquals("Import data running…", importData.getText());
     }
 
     private Button cancelButton(String actionName) {

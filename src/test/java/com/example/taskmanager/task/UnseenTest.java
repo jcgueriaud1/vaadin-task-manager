@@ -4,20 +4,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+
 import org.junit.jupiter.api.Test;
 
 /** A Task that finishes while no tab of the session is visible is Unseen until a tab is visible. */
 class UnseenTest {
 
     private final TestExecutor executor = new TestExecutor();
-    private final TaskList taskList = new TaskList(executor);
-    private final AsyncAction<String> report =
-            new AsyncAction<>("Generate report", BlockingMode.NON_BLOCKING, ctx -> "report");
+    private final TaskList taskList = new TaskList();
+    private final Action report = new Action("Generate report", BlockingMode.NON_BLOCKING);
+    private final Action sync = new Action("Sync with server", BlockingMode.NON_BLOCKING);
 
     @Test
     void aTaskThatFinishesWhileEveryTabIsHiddenIsUnseen() {
         TaskList.Tab tab = taskList.openTab();
-        Task task = report.startTask(taskList);
+        Task task = taskList.start(report, executor, ctx -> {});
         tab.setVisible(false);
 
         executor.runAll();
@@ -28,13 +29,12 @@ class UnseenTest {
 
     @Test
     void everyUnseenTaskIsSeenAsSoonAsAnyTabIsVisible() {
-        var sync = new AsyncAction<>("Sync with server", BlockingMode.NON_BLOCKING, ctx -> {
-            throw new IllegalStateException("Server unreachable");
-        });
         TaskList.Tab first = taskList.openTab();
         TaskList.Tab second = taskList.openTab();
-        Task generated = report.startTask(taskList);
-        Task failed = sync.startTask(taskList);
+        Task generated = taskList.start(report, executor, ctx -> {});
+        Task failed = taskList.start(sync, executor, ctx -> {
+            throw new IllegalStateException("Server unreachable");
+        });
         first.setVisible(false);
         second.setVisible(false);
         executor.runAll();
@@ -52,7 +52,7 @@ class UnseenTest {
         TaskList.Tab closed = taskList.openTab();
         TaskList.Tab hidden = taskList.openTab();
         hidden.setVisible(false);
-        Task task = report.startTask(taskList);
+        Task task = taskList.start(report, executor, ctx -> {});
 
         closed.close();
         executor.runAll();
@@ -65,11 +65,12 @@ class UnseenTest {
         TaskList.Tab hidden = taskList.openTab();
         taskList.openTab();
         hidden.setVisible(false);
-        Task task = report.startTask(taskList);
+        Task task = taskList.start(report, executor, ctx -> {});
 
         executor.runAll();
 
         assertFalse(task.unseen().peek());
         assertEquals(0, taskList.unseenCount().peek());
     }
+
 }

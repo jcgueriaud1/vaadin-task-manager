@@ -7,7 +7,7 @@ A demo of running long operations from a Vaadin UI. Users start them, follow the
 ### Actions and Tasks
 
 **Action**:
-Something the user can start, defined once with a name. It says whether it is blocking and whether it reports progress. An Action has at most one Running Task per session.
+Something the user can start, defined by a name and whether it is blocking. It holds no work: the application runs that itself, on a thread of its choosing. An Action has at most one Running Task per session.
 _Avoid_: Job, operation, task (for the definition)
 
 **Task**:
@@ -37,7 +37,7 @@ The user asks a Running Task to stop. The Task becomes Cancelled when its Action
 _Avoid_: Abort, kill
 
 **Progress**:
-How much of a Task is done, as a fraction from 0 to 1. Only Actions that report progress have it; other Tasks show as indeterminate.
+How much of a Task is done, as a fraction from 0 to 1. A Task has it once its work first reports it; until then it shows as indeterminate.
 _Avoid_: Percentage, completion
 
 **Status text**:
@@ -49,7 +49,7 @@ An optional short text a Succeeded Task ends with, describing what it produced. 
 _Avoid_: Result, output
 
 **Retry**:
-Starting a new Task of the same Action from a Failed or Cancelled Task. The old Task stays as it was. Retrying a Blocking Task blocks the view it was retried from.
+Starting a new Task of the same Action, with the same work, from a Failed or Cancelled Task. A Task can be started as never retryable, for work that must not run twice; it can't be retried. The old Task stays as it was. Retrying a Blocking Task blocks the view it was retried from.
 _Avoid_: Rerun, restart
 
 ### Where Tasks live

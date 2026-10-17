@@ -73,13 +73,11 @@ public class TaskCenter extends Div {
     private static Div buttonIcon(TaskList taskList) {
         Signal<Optional<Double>> overall = taskList.overallProgress();
         Signal<Boolean> running = taskList.runningCount().map(count -> count > 0);
-        ProgressRing progress = new ProgressRing(overall.map(p -> p.orElse(0.0)));
-        progress.bindVisible(overall.map(Optional::isPresent));
-        ProgressRing spinning = new ProgressRing();
-        spinning.bindVisible(Signal.computed(() -> running.get() && overall.get().isEmpty()));
+        ProgressRing progress = new ProgressRing(overall.map(p -> p.orElse(0.0)), overall.map(Optional::isPresent));
+        progress.bindVisible(running);
         Icon idle = VaadinIcon.TASKS.create();
         idle.bindVisible(Signal.not(running));
-        Div icon = new Div(progress, spinning, idle);
+        Div icon = new Div(progress, idle);
         icon.addClassName("task-center-icon");
         icon.getElement().setAttribute("aria-hidden", "true");
         return icon;

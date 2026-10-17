@@ -79,10 +79,6 @@ public class TaskList {
      *                               Action already has a Running Task
      */
     public Task retry(Task task) {
-        TaskState state = task.state().peek();
-        if (state != TaskState.FAILED && state != TaskState.CANCELLED) {
-            throw new IllegalStateException("Only a Failed or Cancelled Task can be retried");
-        }
         return task.retry();
     }
 
@@ -100,7 +96,7 @@ public class TaskList {
     public Signal<Optional<Double>> overallProgress() {
         return Signal.computed(() -> {
             OptionalDouble average = tasks.getValues()
-                    .filter(task -> task.state().get() == TaskState.RUNNING && task.reportsProgress().get())
+                    .filter(task -> task.determinate().get())
                     .mapToDouble(task -> task.progress().get())
                     .average();
             return average.isPresent() ? Optional.of(average.getAsDouble()) : Optional.empty();

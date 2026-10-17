@@ -69,56 +69,72 @@ public final class Task {
         return startedAt;
     }
 
-    /** How long a Running Task has run until now, or how long a Finished Task took. */
-    public Duration elapsed(Instant now) {
-        Instant end = finishedAt;
-        return Duration.between(startedAt, end != null ? end : now);
+    /** How long a Running Task has run until {@code now}, or how long a Finished Task took. */
+    public Signal<Duration> elapsed(Signal<Instant> now) {
+        return Signal.computed(() -> {
+            if (state.get() == TaskState.RUNNING) {
+                return Duration.between(startedAt, now.get());
+            }
+            return Duration.between(startedAt, finishedAt);
+        });
     }
 
     /**
      * A straight-line estimate of how long a Running Task still needs, from its
-     * Progress so far. Empty unless its work reports Progress and it is above 5%.
+     * Progress so far. Empty unless the Task is determinate and above 5%, so a
+     * Finished Task has none.
      */
-    public Optional<Duration> timeLeft(Instant now) {
-        double done = progress.peek();
-        if (!reportsProgress.peek() || state.peek() != TaskState.RUNNING || done <= MIN_PROGRESS_FOR_ESTIMATE) {
-            return Optional.empty();
-        }
-        long elapsedMillis = elapsed(now).toMillis();
-        return Optional.of(Duration.ofMillis(Math.round(elapsedMillis * (1 - done) / done)));
+    public Signal<Optional<Duration>> timeLeft(Signal<Instant> now) {
+        return Signal.computed(() -> {
+            double done = progress.get();
+            if (!determinate().get() || done <= MIN_PROGRESS_FOR_ESTIMATE) {
+                return Optional.empty();
+            }
+            long elapsedMillis = Duration.between(startedAt, now.get()).toMillis();
+            return Optional.of(Duration.ofMillis(Math.round(elapsedMillis * (1 - done) / done)));
+        });
     }
 
+    /** The Task state. Views use it to filter Tasks; what a state means is in the signals below. */
     public Signal<TaskState> state() {
         return state.asReadonly();
+    }
+
+    /** Whether the Task is Running. */
+    public Signal<Boolean> running() {
+        return state.map(s -> s == TaskState.RUNNING);
     }
 
     public Signal<String> statusText() {
         return statusText.asReadonly();
     }
 
-    /** How much of the Task is done, from 0 to 1. Only meaningful once it {@link #reportsProgress()}. */
+    /** How much of the Task is done, from 0 to 1. Only meaningful while it is {@link #determinate()}. */
     public Signal<Double> progress() {
         return progress.asReadonly();
     }
 
-    /** Whether the work has reported Progress yet. Until it does, the Task shows as indeterminate. */
-    public Signal<Boolean> reportsProgress() {
-        return reportsProgress.asReadonly();
+    /**
+     * Whether the Task is Running and its work has reported Progress. Until it
+     * has, or once it is Finished, the Task shows as indeterminate.
+     */
+    public Signal<Boolean> determinate() {
+        return Signal.computed(() -> state.get() == TaskState.RUNNING && reportsProgress.get());
     }
 
-    /** Whether the Task can be Retried once it is Failed or Cancelled: it wasn't started with {@link Retry#NEVER}. */
-    public boolean canRetry() {
-        return retry != null;
+    /** How the Task ended, or empty while it is Running. */
+    public Signal<Optional<Outcome>> outcome() {
+        return Signal.computed(() -> switch (state.get()) {
+            case RUNNING -> Optional.empty();
+            case SUCCEEDED -> Optional.of(new Outcome.Succeeded(resultSummary.get()));
+            case FAILED -> Optional.of(new Outcome.Failed(errorMessage.get()));
+            case CANCELLED -> Optional.of(new Outcome.Cancelled());
+        });
     }
 
-    /** What a Succeeded Task produced, or empty if its Action didn't say. */
-    public Signal<String> resultSummary() {
-        return resultSummary.asReadonly();
-    }
-
-    /** The message of the exception a Failed Task ended with, empty otherwise. */
-    public Signal<String> errorMessage() {
-        return errorMessage.asReadonly();
+    /** Whether the user can Retry the Task: it is Failed or Cancelled, and wasn't started with {@link Retry#NEVER}. */
+    public Signal<Boolean> retryable() {
+        return state.map(s -> retry != null && (s == TaskState.FAILED || s == TaskState.CANCELLED));
     }
 
     /** Whether the user has removed this Finished Task from the tray. */
@@ -192,8 +208,8 @@ public final class Task {
 
     /** Starts a new Task with the same work on the same executor. */
     Task retry() {
-        if (retry == null) {
-            throw new IllegalStateException("Task " + id + " was started as never retryable");
+        if (!retryable().peek()) {
+            throw new IllegalStateException("Task " + id + " can't be retried");
         }
         return retry.get();
     }

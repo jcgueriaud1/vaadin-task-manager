@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -117,12 +118,12 @@ class TaskRunTest {
         Task task = taskList.start(newsletter, executor, ctx -> {
             throw new IllegalStateException("Server unreachable");
         });
-        assertEquals("", task.errorMessage().peek());
+        assertEquals(Optional.empty(), task.outcome().peek());
 
         executor.runAll();
 
         assertEquals(TaskState.FAILED, task.state().peek());
-        assertEquals("Server unreachable", task.errorMessage().peek());
+        assertEquals(Optional.of(new Outcome.Failed("Server unreachable")), task.outcome().peek());
         assertFalse(taskList.isRunning(newsletter).peek());
     }
 
@@ -160,10 +161,10 @@ class TaskRunTest {
             executor.pause();
         });
         executor.runNext();
-        assertFalse(task.reportsProgress().peek());
+        assertFalse(task.determinate().peek());
 
         executor.resume();
-        assertTrue(task.reportsProgress().peek());
+        assertTrue(task.determinate().peek());
     }
 
     @Test
@@ -191,12 +192,12 @@ class TaskRunTest {
     @Test
     void aTaskCanEndWithAResultSummary() {
         Task task = taskList.start(newsletter, executor, ctx -> ctx.setResultSummary("1,240 emails sent"));
-        assertEquals("", task.resultSummary().peek());
+        assertEquals(Optional.empty(), task.outcome().peek());
 
         executor.runAll();
 
         assertEquals(TaskState.SUCCEEDED, task.state().peek());
-        assertEquals("1,240 emails sent", task.resultSummary().peek());
+        assertEquals(Optional.of(new Outcome.Succeeded("1,240 emails sent")), task.outcome().peek());
     }
 
     @Test
@@ -204,7 +205,7 @@ class TaskRunTest {
         Task task = taskList.start(newsletter, Runnable::run, ctx -> ctx.setResultSummary("1,240 emails sent"));
 
         assertEquals(TaskState.SUCCEEDED, task.state().peek());
-        assertEquals("1,240 emails sent", task.resultSummary().peek());
+        assertEquals(Optional.of(new Outcome.Succeeded("1,240 emails sent")), task.outcome().peek());
     }
 
     @Test
@@ -227,7 +228,7 @@ class TaskRunTest {
         executor.runAll();
 
         assertEquals(TaskState.FAILED, task.state().peek());
-        assertEquals("Disk full", task.errorMessage().peek());
+        assertEquals(Optional.of(new Outcome.Failed("Disk full")), task.outcome().peek());
         assertFalse(taskList.isRunning(newsletter).peek());
     }
 
@@ -240,7 +241,7 @@ class TaskRunTest {
         assertEquals("Too deep", error.getMessage());
         Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
         assertEquals(TaskState.FAILED, task.state().peek());
-        assertEquals("Too deep", task.errorMessage().peek());
+        assertEquals(Optional.of(new Outcome.Failed("Too deep")), task.outcome().peek());
         assertFalse(taskList.isRunning(newsletter).peek());
     }
 
@@ -253,7 +254,7 @@ class TaskRunTest {
         Task task = taskList.start(newsletter, shutDown, ctx -> {});
 
         assertEquals(TaskState.FAILED, task.state().peek());
-        assertEquals("Couldn't start: Executor is shut down", task.errorMessage().peek());
+        assertEquals(Optional.of(new Outcome.Failed("Couldn't start: Executor is shut down")), task.outcome().peek());
         assertFalse(taskList.isRunning(newsletter).peek());
     }
 

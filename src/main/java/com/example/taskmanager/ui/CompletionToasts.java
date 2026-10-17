@@ -1,11 +1,12 @@
 package com.example.taskmanager.ui;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
+import com.example.taskmanager.task.Outcome;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
-import com.example.taskmanager.task.TaskState;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -32,15 +33,15 @@ final class CompletionToasts {
         Set<Task> handled = new HashSet<>();
         Signal.effect(owner, () -> taskList.tasks().getValues()
                 .forEach(task -> {
-                    TaskState state = task.state().get();
-                    if (state == TaskState.RUNNING || !handled.add(task)) {
+                    Optional<Outcome> outcome = task.outcome().get();
+                    if (outcome.isEmpty() || !handled.add(task)) {
                         return;
                     }
                     Signal.untracked(() -> {
-                        Notification toast = switch (state) {
-                            case SUCCEEDED -> succeeded(task);
-                            case FAILED -> failed(task);
-                            default -> null;
+                        Notification toast = switch (outcome.get()) {
+                            case Outcome.Succeeded succeeded -> succeeded(task, succeeded);
+                            case Outcome.Failed failed -> failed(task, failed);
+                            case Outcome.Cancelled cancelled -> null;
                         };
                         owner.getUI().filter(CompletionToasts::visible).ifPresent(ui -> {
                             if (toast != null) {
@@ -60,10 +61,10 @@ final class CompletionToasts {
         return visibility == PageVisibility.VISIBLE || visibility == PageVisibility.VISIBLE_NOT_FOCUSED;
     }
 
-    private static Notification succeeded(Task task) {
+    private static Notification succeeded(Task task, Outcome.Succeeded outcome) {
         Notification toast = new Notification();
         toast.addClassName("completion-toast");
-        Span resultSummary = new Span(task.resultSummary().peek());
+        Span resultSummary = new Span(outcome.resultSummary());
         resultSummary.addClassName("task-result-summary");
         Button open = new Button("Open", e -> openDetails(e.getSource(), task, toast));
         open.addThemeVariants(ButtonVariant.TERTIARY);
@@ -71,11 +72,11 @@ final class CompletionToasts {
         return toast;
     }
 
-    private static Notification failed(Task task) {
+    private static Notification failed(Task task, Outcome.Failed outcome) {
         Notification toast = new Notification();
         toast.addClassName("completion-toast");
         toast.addThemeVariants(NotificationVariant.ERROR);
-        Span errorMessage = new Span(task.errorMessage().peek());
+        Span errorMessage = new Span(outcome.errorMessage());
         errorMessage.addClassName("task-error-message");
         Button details = new Button("Details", e -> openDetails(e.getSource(), task, toast));
         details.addThemeVariants(ButtonVariant.TERTIARY);

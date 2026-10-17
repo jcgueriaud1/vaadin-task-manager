@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.taskmanager.task.Outcome;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TaskState;
@@ -68,7 +69,7 @@ public class TaskTray extends Div {
 
     /** For example "1 task running · 2 tasks finished", or "" when there's nothing. */
     static String headline(List<Task> tasks) {
-        long running = tasks.stream().filter(task -> task.state().get() == TaskState.RUNNING).count();
+        long running = tasks.stream().filter(task -> task.running().get()).count();
         long finished = tasks.size() - running;
         List<String> parts = new ArrayList<>();
         if (running > 0) {
@@ -94,14 +95,14 @@ public class TaskTray extends Div {
         cancel.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
         cancel.setAriaLabel("Cancel " + task.action().name());
         cancel.addClassName("task-cancel");
-        cancel.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        cancel.bindVisible(task.running());
         RouterLink open = detailLink(task);
-        open.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
+        open.bindVisible(Signal.not(task.running()));
         Button dismiss = new Button(new Icon(VaadinIcon.CLOSE_SMALL), e -> taskList.dismiss(task));
         dismiss.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
         dismiss.setAriaLabel("Dismiss " + task.action().name());
         dismiss.addClassName("task-dismiss");
-        dismiss.bindVisible(task.state().map(s -> s != TaskState.RUNNING));
+        dismiss.bindVisible(Signal.not(task.running()));
         Div actions = new Div(cancel, open, dismiss);
         actions.addClassName("task-row-actions");
 
@@ -125,8 +126,7 @@ public class TaskTray extends Div {
      * files" or "Failed · Server unreachable" once Finished.
      */
     static Div meta(Task task) {
-        Signal<Boolean> showsPercent = Signal.computed(
-                () -> task.state().get() == TaskState.RUNNING && task.reportsProgress().get());
+        Signal<Boolean> showsPercent = task.determinate();
         Span state = new Span(task.state().map(TaskTray::label));
         state.addClassName("task-state");
         state.bindVisible(Signal.not(showsPercent));
@@ -135,13 +135,9 @@ public class TaskTray extends Div {
         percent.bindVisible(showsPercent);
         Span statusText = new Span(task.statusText());
         statusText.addClassName("task-status-text");
-        statusText.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
-        Span resultSummary = new Span(task.resultSummary());
-        resultSummary.addClassName("task-result-summary");
-        resultSummary.bindVisible(task.state().map(s -> s == TaskState.SUCCEEDED));
-        Span errorMessage = new Span(task.errorMessage());
-        errorMessage.addClassName("task-error-message");
-        errorMessage.bindVisible(task.state().map(s -> s == TaskState.FAILED));
+        statusText.bindVisible(task.running());
+        Span resultSummary = resultSummary(task);
+        Span errorMessage = errorMessage(task);
         Div meta = new Div(state, percent, statusText, resultSummary, errorMessage);
         meta.addClassName("task-meta");
         return meta;
@@ -149,8 +145,8 @@ public class TaskTray extends Div {
 
     /** A ring while the Task is Running, then an icon for how it finished. */
     static Div indicator(Task task) {
-        ProgressRing ring = new ProgressRing(task.progress(), task.reportsProgress());
-        ring.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        ProgressRing ring = new ProgressRing(task.progress(), task.determinate());
+        ring.bindVisible(task.running());
         Div indicator = new Div(ring,
                 stateIcon(task, TaskState.SUCCEEDED, VaadinIcon.CHECK_CIRCLE),
                 stateIcon(task, TaskState.FAILED, VaadinIcon.EXCLAMATION_CIRCLE),
@@ -172,9 +168,27 @@ public class TaskTray extends Div {
         ProgressBar bar = new ProgressBar();
         bar.addClassName("task-progress");
         bar.bindValue(task.progress());
-        Signal.effect(bar, () -> bar.setIndeterminate(!task.reportsProgress().get()));
-        bar.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        Signal.effect(bar, () -> bar.setIndeterminate(!task.determinate().get()));
+        bar.bindVisible(task.running());
         return bar;
+    }
+
+    /** The Result summary of a Succeeded Task, shown only once it Succeeded. */
+    static Span resultSummary(Task task) {
+        Span span = new Span(task.outcome().map(
+                o -> o.orElse(null) instanceof Outcome.Succeeded s ? s.resultSummary() : ""));
+        span.addClassName("task-result-summary");
+        span.bindVisible(task.outcome().map(o -> o.orElse(null) instanceof Outcome.Succeeded));
+        return span;
+    }
+
+    /** The error of a Failed Task, shown only once it Failed. */
+    static Span errorMessage(Task task) {
+        Span span = new Span(task.outcome().map(
+                o -> o.orElse(null) instanceof Outcome.Failed f ? f.errorMessage() : ""));
+        span.addClassName("task-error-message");
+        span.bindVisible(task.outcome().map(o -> o.orElse(null) instanceof Outcome.Failed));
+        return span;
     }
 
     static String label(TaskState state) {

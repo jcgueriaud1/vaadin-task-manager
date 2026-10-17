@@ -127,36 +127,25 @@ public class TasksView extends Div implements BeforeEnterObserver {
         state.getElement().bindAttribute("data-state", task.state().map(s -> s.name().toLowerCase()));
         Span started = new Span("Started " + START_TIME.format(task.startedAt().atZone(clock.getZone())));
         started.addClassName("task-started");
-        Span elapsed = new Span(Signal.computed(() -> {
-            String prefix = task.state().get() == TaskState.RUNNING ? "Running for " : "Took ";
-            return prefix + format(task.elapsed(now.get()));
-        }));
+        Signal<Duration> took = task.elapsed(now);
+        Span elapsed = new Span(Signal.computed(
+                () -> (task.running().get() ? "Running for " : "Took ") + format(took.get())));
         elapsed.addClassName("task-elapsed");
-        Signal<Optional<Duration>> timeLeft = Signal.computed(() -> {
-            // Read the signals the estimate depends on so it follows them
-            task.state().get();
-            task.progress().get();
-            return task.timeLeft(now.get());
-        });
+        Signal<Optional<Duration>> timeLeft = task.timeLeft(now);
         Span timeLeftText = new Span(timeLeft.map(left -> left.map(d -> "About " + format(d) + " left").orElse("")));
         timeLeftText.addClassName("task-time-left");
         timeLeftText.bindVisible(timeLeft.map(Optional::isPresent));
         Span statusText = new Span(task.statusText());
         statusText.addClassName("task-status-text");
-        Span resultSummary = new Span(task.resultSummary());
-        resultSummary.addClassName("task-result-summary");
-        resultSummary.bindVisible(task.state().map(s -> s == TaskState.SUCCEEDED));
-        Span errorMessage = new Span(task.errorMessage());
-        errorMessage.addClassName("task-error-message");
-        errorMessage.bindVisible(task.state().map(s -> s == TaskState.FAILED));
+        Span resultSummary = TaskTray.resultSummary(task);
+        Span errorMessage = TaskTray.errorMessage(task);
 
         Button cancel = new Button("Cancel", e -> task.cancel());
         cancel.addThemeVariants(ButtonVariant.ERROR);
-        cancel.bindVisible(task.state().map(s -> s == TaskState.RUNNING));
+        cancel.bindVisible(task.running());
         Button retry = new Button("Retry", e -> BlockingTaskDialog.openIfBlocking(taskList.retry(task)));
         retry.addThemeVariants(ButtonVariant.PRIMARY);
-        retry.bindVisible(task.state().map(
-                s -> task.canRetry() && (s == TaskState.FAILED || s == TaskState.CANCELLED)));
+        retry.bindVisible(task.retryable());
         retry.bindEnabled(Signal.not(taskList.isRunning(task.action())));
         Div buttons = new Div(cancel, retry);
         buttons.addClassName("task-detail-buttons");

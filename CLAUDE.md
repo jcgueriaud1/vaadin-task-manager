@@ -1,11 +1,15 @@
-# Vaadin Task Manager
+# TaskPulse
 
-Vaadin Flow + Spring Boot application (Java 21, Spring Boot 4.1, Vaadin 25.3).
-Code lives in `com.example.taskmanager`.
+A Vaadin add-on (Java 21, Vaadin 25.3, no Spring) and its Spring Boot 4.1 demo, as a Maven reactor:
 
-- Run: `./mvnw` (default goal is `spring-boot:run`), then open http://localhost:8080
-- Test: `./mvnw test` (browserless UI tests)
-- Package: `./mvnw package`
+- `addon/`: the add-on, `org.vaadin.addons:taskpulse`, package `org.vaadin.addons.taskpulse`.
+  Its public types carry the `Pulse` prefix (ADR 0003).
+- `demo/`: the demo app, package `org.vaadin.addons.taskpulse.demo`, deployed to Render.
+
+- Run: `./mvnw` at the root (builds the add-on, then runs the demo), then open http://localhost:8080
+- Test: `./mvnw verify` (add-on unit and browserless tests, demo browserless UI tests)
+- Package the demo: `./mvnw -pl demo -am package`
+- Directory zip: `./mvnw -Pdirectory -pl addon -am package`
 
 ## Agent skills
 

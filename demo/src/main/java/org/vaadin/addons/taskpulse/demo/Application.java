@@ -16,7 +16,7 @@ import com.vaadin.flow.theme.aura.Aura;
  * right away.
  */
 @SpringBootApplication
-@PWA(name = "Vaadin Task Manager", shortName = "Task Manager")
+@PWA(name = "TaskPulse Demo", shortName = "TaskPulse")
 @Push
 @StyleSheet(Aura.STYLESHEET)
 @StyleSheet("styles.css")

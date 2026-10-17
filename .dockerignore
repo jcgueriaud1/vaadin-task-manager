@@ -1,6 +1,6 @@
-target/
-node_modules/
-src/main/frontend/generated/
+**/target/
+**/node_modules/
+**/src/main/frontend/generated/
 .git/
 .claude/
 .idea/

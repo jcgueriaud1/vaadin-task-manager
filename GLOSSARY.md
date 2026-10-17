@@ -1,6 +1,6 @@
-# Vaadin Task Manager
+# TaskPulse
 
-A demo of running long operations from a Vaadin UI. Users start them, follow their progress and get notified when they finish.
+A Vaadin add-on for running long operations from a Vaadin UI, and its demo. Users start them, follow their progress and get notified when they finish. In code, the add-on's types carry the `Pulse` prefix (`PulseTask` for a Task, `PulseTaskList` for the Task list); the terms below stay as they are.
 
 ## Language
 

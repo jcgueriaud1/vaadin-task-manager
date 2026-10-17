@@ -1,0 +1,40 @@
+name: Vaadin Directory
+
+# Publishing a GitHub release for a taskpulse-* tag uploads the add-on zip to
+# the Vaadin Directory as a draft (publish=false), to review and publish there.
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    if: startsWith(github.event.release.tag_name, 'taskpulse-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build the Directory zip
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG#taskpulse-}"
+          ./mvnw -B org.codehaus.mojo:versions-maven-plugin:2.23.0:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false
+          ./mvnw -B -Pdirectory -pl addon -am -DskipTests package
+          echo "ZIP=addon/target/taskpulse-$VERSION.zip" >> "$GITHUB_ENV"
+      - name: Upload to the Vaadin Directory
+        env:
+          DIRECTORY_AUTH_KEY: ${{ secrets.DIRECTORY_AUTH_KEY }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+        run: |
+          curl --fail-with-body -sS https://vaadin.com/vaadincom/directory-service/upload/taskpulse \
+            -F authKey="$DIRECTORY_AUTH_KEY" \
+            -F publish=false \
+            -F releaseNotes="$RELEASE_NOTES" \
+            -F file=@"$ZIP"

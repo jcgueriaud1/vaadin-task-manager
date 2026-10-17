@@ -20,6 +20,7 @@ import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverTester;
 import com.vaadin.flow.component.progressbar.ProgressBar;
 import org.vaadin.addons.taskpulse.TestExecutor;
+import org.vaadin.addons.taskpulse.PulseTray;
 
 @SpringBootTest
 @Import(TestTaskConfig.class)
@@ -107,8 +108,8 @@ class TaskTrayTest extends SpringBrowserlessTest {
         test(startButton("Send newsletter")).click();
         runPendingSignalsTasks();
 
-        ProgressRing indicator = rowIndicator("Send newsletter");
-        assertTrue(indicator.isIndeterminate());
+        Span indicator = rowIndicator("Send newsletter");
+        assertTrue(indicator.hasClassName("indeterminate"));
         assertFalse(overallBarShown());
     }
 
@@ -118,20 +119,20 @@ class TaskTrayTest extends SpringBrowserlessTest {
 
         test(startButton("Export data")).click();
         runPendingSignalsTasks();
-        assertTrue(rowIndicator("Export data").isIndeterminate(), "its work hasn't reported Progress yet");
+        assertTrue(rowIndicator("Export data").hasClassName("indeterminate"), "its work hasn't reported Progress yet");
         assertFalse(overallBarShown());
 
         executor.runNext();
         runPendingSignalsTasks();
-        assertFalse(rowIndicator("Export data").isIndeterminate());
+        assertFalse(rowIndicator("Export data").hasClassName("indeterminate"));
         assertTrue(overallBarShown());
-        assertEquals(0.5, rowIndicator("Export data").getValue());
+        assertEquals("50", rowIndicator("Export data").getElement().getAttribute("aria-valuenow"));
         assertEquals(0.5, overallBar().getValue());
         assertFalse(row("Export data").getElement().getTextRecursively().contains("3 CSV files"));
 
         executor.resume();
         runPendingSignalsTasks();
-        assertFalse($(ProgressRing.class).from(row("Export data")).exists());
+        assertFalse($(Span.class).from(row("Export data")).withClassName("pulse-progress-ring").exists());
         assertFalse(overallBarShown());
         String rowText = row("Export data").getElement().getTextRecursively();
         assertTrue(rowText.contains("Succeeded"), rowText);
@@ -139,7 +140,7 @@ class TaskTrayTest extends SpringBrowserlessTest {
     }
 
     private boolean trayShown() {
-        return $(TaskTray.class).exists();
+        return $(PulseTray.class).exists();
     }
 
     private ComponentQuery<Button> dismissButton(String actionName) {
@@ -147,15 +148,15 @@ class TaskTrayTest extends SpringBrowserlessTest {
     }
 
     private boolean rowsShown() {
-        return $(Div.class).from(tray()).withClassName("task-row").exists();
+        return $(Div.class).from(tray()).withClassName("pulse-row").exists();
     }
 
     private String headline() {
-        return $(Span.class).from(tray()).withClassName("task-tray-headline").single().getText();
+        return $(Span.class).from(tray()).withClassName("pulse-tray-headline").single().getText();
     }
 
-    private TaskTray tray() {
-        return $(TaskTray.class).single();
+    private PulseTray tray() {
+        return $(PulseTray.class).single();
     }
 
     private Button startButton(String actionName) {
@@ -163,20 +164,21 @@ class TaskTrayTest extends SpringBrowserlessTest {
     }
 
     private Div row(String actionName) {
-        return $(Div.class).withClassName("task-row")
+        return $(Div.class).withClassName("pulse-row")
                 .withCondition(row -> row.getElement().getTextRecursively().contains(actionName)).single();
     }
 
-    private ProgressRing rowIndicator(String actionName) {
-        return $(ProgressRing.class).from(row(actionName)).single();
+    /** The ring in the Task's row, which follows its Progress. */
+    private Span rowIndicator(String actionName) {
+        return $(Span.class).from(row(actionName)).withClassName("pulse-progress-ring").single();
     }
 
     /** Hidden components aren't found by queries. */
     private boolean overallBarShown() {
-        return $(ProgressBar.class).withClassName("task-tray-progress").exists();
+        return $(ProgressBar.class).withClassName("pulse-tray-progress").exists();
     }
 
     private ProgressBar overallBar() {
-        return $(ProgressBar.class).withClassName("task-tray-progress").single();
+        return $(ProgressBar.class).withClassName("pulse-tray-progress").single();
     }
 }

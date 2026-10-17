@@ -1,22 +1,26 @@
-package org.vaadin.addons.taskpulse.demo.ui;
+package org.vaadin.addons.taskpulse;
 
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.PageVisibility;
 import com.vaadin.flow.signals.Signal;
 
 /**
  * Asks the browser for permission to show native notifications, only when
  * clicked, and shows the current permission: not asked, granted or denied.
+ * {@link PulseWatcher} shows a native notification for each Task that finishes
+ * while no tab of the session is visible, once the user granted it.
  */
-public class NotificationPermissionButton extends Button {
+@StyleSheet(PulseTaskParts.STYLESHEET)
+public class PulseNotificationButton extends Button {
 
     private boolean effectAdded;
 
-    public NotificationPermissionButton() {
+    public PulseNotificationButton() {
         setAriaLabel("Notification permission");
-        addClassName("notification-permission");
+        addClassName("pulse-notification-button");
         setVisible(false);
         addClickListener(event -> getUI().ifPresent(ui -> ui.getPage()
                 .executeJs("return Notification.requestPermission()")

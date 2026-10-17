@@ -114,7 +114,7 @@ class TasksViewTest extends SpringBrowserlessTest {
         tick();
         assertEquals("Succeeded", detail("task-state"));
         assertEquals("Took 1 min 30 s", detail("task-elapsed"));
-        assertEquals("3 CSV files", detail("task-result-summary"));
+        assertEquals("3 CSV files", detail("pulse-result-summary"));
         assertFalse(detailText("task-time-left").exists());
         assertFalse($(ProgressBar.class).from(detailPane()).exists());
         assertFalse(detailButton("Cancel").exists());
@@ -144,7 +144,7 @@ class TasksViewTest extends SpringBrowserlessTest {
         select("Sync with server");
 
         assertEquals("Failed", detail("task-state"));
-        assertEquals("Server unreachable", detail("task-error-message"));
+        assertEquals("Server unreachable", detail("pulse-error-message"));
         assertTrue(detailButton("Retry").exists());
         assertFalse(detailButton("Cancel").exists());
     }
@@ -318,7 +318,7 @@ class TasksViewTest extends SpringBrowserlessTest {
 
     private List<String> listedTaskNames() {
         return $(Div.class).withClassName("tasks-row").all().stream()
-                .map(row -> $(Span.class).from(row).withClassName("task-name").single().getText())
+                .map(row -> $(Span.class).from(row).withClassName("pulse-name").single().getText())
                 .toList();
     }
 }

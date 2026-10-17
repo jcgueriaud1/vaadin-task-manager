@@ -20,6 +20,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.signals.Signal;
 import org.vaadin.addons.taskpulse.PulseAction;
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
+import org.vaadin.addons.taskpulse.PulseBlockingDialog;
 import org.vaadin.addons.taskpulse.PulseTaskContext;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 
@@ -36,7 +37,7 @@ public class ActionsView extends Div {
     static final PulseAction SYNC_WITH_SERVER = new PulseAction("Sync with server", BlockingMode.NON_BLOCKING);
     static final PulseAction IMPORT_DATA = new PulseAction("Import data", BlockingMode.BLOCKING);
 
-    // The work of each Action. It reports through its TaskContext and never touches the UI
+    // The work of each Action. It reports through its PulseTaskContext and never touches the UI
 
     // Without Progress: the tray shows a spinning ring
     static void sendNewsletter(PulseTaskContext ctx) {
@@ -77,7 +78,7 @@ public class ActionsView extends Div {
         ctx.setResultSummary("Up to date");
     }
 
-    // Blocking: starting it from this view opens a BlockingTaskDialog until the Task finishes
+    // Blocking: starting it from this view opens a PulseBlockingDialog until the Task finishes
     static void importData(PulseTaskContext ctx) {
         int files = 8;
         for (int file = 1; file <= files; file++) {
@@ -110,10 +111,10 @@ public class ActionsView extends Div {
                 spinning ring. Start it, then keep using the app or cancel it \
                 from the tray.""",
                 """
-                static final Action SEND_NEWSLETTER =
-                        new Action("Send newsletter", BlockingMode.NON_BLOCKING);
+                static final PulseAction SEND_NEWSLETTER =
+                        new PulseAction("Send newsletter", BlockingMode.NON_BLOCKING);
 
-                static void sendNewsletter(TaskContext ctx) {
+                static void sendNewsletter(PulseTaskContext ctx) {
                     ctx.setStatusText("Preparing recipients");
                     sleep(1500);
                     for (int batch = 1; batch <= 5; batch++) {
@@ -131,10 +132,10 @@ public class ActionsView extends Div {
                 Its work also calls setProgress(0..1), so the tray and the navbar \
                 show how much is done.""",
                 """
-                static final Action GENERATE_REPORT =
-                        new Action("Generate report", BlockingMode.NON_BLOCKING);
+                static final PulseAction GENERATE_REPORT =
+                        new PulseAction("Generate report", BlockingMode.NON_BLOCKING);
 
-                static void generateReport(TaskContext ctx) {
+                static void generateReport(PulseTaskContext ctx) {
                     String[] steps = { "collecting data", "aggregating",
                             "rendering charts", "writing PDF files" };
                     for (int step = 0; step < steps.length; step++) {
@@ -157,10 +158,10 @@ public class ActionsView extends Div {
                 exception message as its error. Open the failure toast or the \
                 Background tasks page to Retry it.""",
                 """
-                static final Action SYNC_WITH_SERVER =
-                        new Action("Sync with server", BlockingMode.NON_BLOCKING);
+                static final PulseAction SYNC_WITH_SERVER =
+                        new PulseAction("Sync with server", BlockingMode.NON_BLOCKING);
 
-                static void syncWithServer(TaskContext ctx) {
+                static void syncWithServer(PulseTaskContext ctx) {
                     ctx.setStatusText("Connecting");
                     sleep(1500);
                     ctx.setStatusText("Downloading changes");
@@ -181,10 +182,10 @@ public class ActionsView extends Div {
                 until the Task finishes or is cancelled, and so does Retry. Other tabs of the session stay usable \
                 and see the Task in their tray.""",
                 """
-                static final Action IMPORT_DATA =
-                        new Action("Import data", BlockingMode.BLOCKING);
+                static final PulseAction IMPORT_DATA =
+                        new PulseAction("Import data", BlockingMode.BLOCKING);
 
-                static void importData(TaskContext ctx) {
+                static void importData(PulseTaskContext ctx) {
                     int files = 8;
                     for (int file = 1; file <= files; file++) {
                         ctx.setStatusText("Importing file " + file + " of " + files);
@@ -213,7 +214,7 @@ public class ActionsView extends Div {
      */
     private Button startButton(PulseAction action, Consumer<PulseTaskContext> work) {
         Button button = new Button("Start",
-                e -> BlockingTaskDialog.openIfBlocking(taskList.start(action, executor, work)));
+                e -> PulseBlockingDialog.openIfBlocking(taskList.start(action, executor, work)));
         Signal<Boolean> running = taskList.isRunning(action);
         button.bindText(running.map(r -> r ? action.name() + " running…" : "Start"));
         button.bindEnabled(Signal.not(running));
@@ -223,7 +224,7 @@ public class ActionsView extends Div {
 
     private static Div intro() {
         Div intro = new Div(
-                new H2("Async Actions"),
+                new H2("TaskPulse"),
                 new Paragraph("""
                         Each card below is an Action, a name and a blocking mode, with the work it does. \
                         Its start button is a regular Button: the view starts a Task in the Task list with \
@@ -237,7 +238,7 @@ public class ActionsView extends Div {
                 code("Show how the buttons start Tasks", """
                         // Any Executor will do: virtual threads, Spring's TaskExecutor, Runnable::run…
                         // Retry starts the same work on the same executor.
-                        Button button = new Button("Start", e -> BlockingTaskDialog.openIfBlocking(
+                        Button button = new Button("Start", e -> PulseBlockingDialog.openIfBlocking(
                                 taskList.start(action, executor, work)));
                         // Locked while the Action runs, in any tab of the session
                         Signal<Boolean> running = taskList.isRunning(action);

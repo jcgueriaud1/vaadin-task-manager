@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Import;
 
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverTester;
@@ -50,7 +49,7 @@ class TaskCenterTest extends SpringBrowserlessTest {
     }
 
     @Test
-    void popoverListsRunningAndFinishedTasksWithAViewAllLink() {
+    void popoverListsRunningAndFinishedTasksWithAViewAllButton() {
         test(startButton("Generate report")).click();
         executor.runAll();
         test(startButton("Send newsletter")).click();
@@ -63,7 +62,7 @@ class TaskCenterTest extends SpringBrowserlessTest {
         assertTrue(text.contains("Running"), text);
         assertTrue(text.contains("Generate report"), text);
         assertTrue(text.contains("Succeeded"), text);
-        assertEquals("tasks", $(Anchor.class).from(popover).withText("View all").single().getHref());
+        assertTrue($(Button.class).from(popover).withText("View all").exists());
     }
 
     @Test
@@ -76,7 +75,7 @@ class TaskCenterTest extends SpringBrowserlessTest {
         test(startButton("Send newsletter")).click();
 
         Popover popover = openPopover();
-        var rows = $(Div.class).from(popover).withClassName("task-center-row").all();
+        var rows = $(Div.class).from(popover).withClassName("pulse-center-row").all();
         assertEquals(6, rows.size(), "1 Running + 5 Finished");
         assertTrue(rows.getFirst().getElement().getTextRecursively().contains("Send newsletter"),
                 "most recent first");
@@ -84,9 +83,9 @@ class TaskCenterTest extends SpringBrowserlessTest {
 
     @Test
     void viewAllLandsOnTheBackgroundTasksPage() {
-        Anchor viewAll = $(Anchor.class).from(openPopover()).withText("View all").single();
+        test($(Button.class).from(openPopover()).withText("View all").single()).click();
 
-        assertTrue(navigate(viewAll.getHref(), TasksView.class) instanceof TasksView);
+        assertTrue(getCurrentView() instanceof TasksView);
     }
 
     private Popover openPopover() {

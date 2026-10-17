@@ -19,6 +19,7 @@ import org.vaadin.addons.taskpulse.PulseAction;
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 import org.vaadin.addons.taskpulse.TestExecutor;
+import org.vaadin.addons.taskpulse.PulseTray;
 
 @SpringBootTest
 @Import(TestTaskConfig.class)
@@ -136,6 +137,6 @@ class ActionsViewTest extends SpringBrowserlessTest {
     }
 
     private String trayText() {
-        return $(TaskTray.class).single().getElement().getTextRecursively();
+        return $(PulseTray.class).single().getElement().getTextRecursively();
     }
 }

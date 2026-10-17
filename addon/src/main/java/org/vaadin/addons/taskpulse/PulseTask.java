@@ -17,8 +17,8 @@ import com.vaadin.flow.signals.local.ValueSignal;
 
 /**
  * One run of an Action. Its fixed fields never change; the rest are signals,
- * which every view follows: the tray, the task center, the Background tasks
- * page and the {@code BlockingTaskDialog}.
+ * which every view follows: the {@link PulseTray}, the {@link PulseCenter}, the
+ * {@link PulseBlockingDialog} and the app's own views.
  * <p>
  * The application starts it with {@link PulseTaskList#start(PulseAction, java.util.concurrent.Executor, Consumer)},
  * which runs its work.

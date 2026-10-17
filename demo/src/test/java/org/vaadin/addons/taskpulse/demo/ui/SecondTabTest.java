@@ -18,6 +18,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.server.VaadinSession;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 import org.vaadin.addons.taskpulse.TestExecutor;
+import org.vaadin.addons.taskpulse.PulseTray;
 
 /** Two browser tabs of one session see the same Running count and Dismissals. */
 @SpringBootTest
@@ -65,7 +66,7 @@ class SecondTabTest extends SpringBrowserlessTest {
     }
 
     private boolean secondTrayShown() {
-        return $(TaskTray.class).from(secondTab).exists();
+        return $(PulseTray.class).from(secondTab).exists();
     }
 
     private Button startButton(String actionName) {

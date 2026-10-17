@@ -20,6 +20,7 @@ import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.server.VaadinSession;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 import org.vaadin.addons.taskpulse.TestExecutor;
+import org.vaadin.addons.taskpulse.PulseTray;
 
 /** A Blocking Task covers the tab that started it with a dialog until it finishes. */
 @SpringBootTest
@@ -155,7 +156,7 @@ class BlockingTaskTest extends SpringBrowserlessTest {
 
         assertTrue($(Dialog.class).from(starting).exists());
         assertFalse($(Dialog.class).from(other).exists());
-        String otherTray = $(TaskTray.class).from(other).single().getElement().getTextRecursively();
+        String otherTray = $(PulseTray.class).from(other).single().getElement().getTextRecursively();
         assertTrue(otherTray.contains("Import data"), otherTray);
         assertTrue(otherTray.contains("Running"), otherTray);
     }
@@ -170,7 +171,7 @@ class BlockingTaskTest extends SpringBrowserlessTest {
         runPendingSignalsTasks();
 
         assertFalse($(Dialog.class).from(reloaded).exists());
-        String tray = $(TaskTray.class).from(reloaded).single().getElement().getTextRecursively();
+        String tray = $(PulseTray.class).from(reloaded).single().getElement().getTextRecursively();
         assertTrue(tray.contains("Import data"), tray);
         assertTrue(tray.contains("Running"), tray);
         assertTrue(tray.contains("Reading file 1"), tray);
@@ -187,7 +188,7 @@ class BlockingTaskTest extends SpringBrowserlessTest {
     }
 
     private String trayText() {
-        return $(TaskTray.class).single().getElement().getTextRecursively();
+        return $(PulseTray.class).single().getElement().getTextRecursively();
     }
 
     private Button startButton(String actionName) {

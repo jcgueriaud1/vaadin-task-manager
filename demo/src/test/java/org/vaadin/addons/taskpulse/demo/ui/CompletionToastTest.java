@@ -30,6 +30,7 @@ import com.vaadin.flow.server.VaadinSession;
 import org.vaadin.addons.taskpulse.PulseTask;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 import org.vaadin.addons.taskpulse.TestExecutor;
+import org.vaadin.addons.taskpulse.PulseTray;
 
 /** When a Task finishes, every visible tab of the session shows a toast. */
 @SpringBootTest
@@ -104,7 +105,7 @@ class CompletionToastTest extends SpringBrowserlessTest {
         executor.resume();
         runPendingSignalsTasks();
 
-        String trayText = $(TaskTray.class).single().getElement().getTextRecursively();
+        String trayText = $(PulseTray.class).single().getElement().getTextRecursively();
         assertTrue(trayText.contains("Cancelled"), trayText);
         assertFalse($(Notification.class).exists());
     }

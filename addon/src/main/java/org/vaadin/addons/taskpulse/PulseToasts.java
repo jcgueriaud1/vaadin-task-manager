@@ -1,13 +1,15 @@
-package org.vaadin.addons.taskpulse.demo.ui;
+package org.vaadin.addons.taskpulse;
 
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -15,20 +17,21 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.page.PageVisibility;
-import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.signals.Signal;
-import org.vaadin.addons.taskpulse.PulseTask;
 import org.vaadin.addons.taskpulse.PulseTask.Outcome;
-import org.vaadin.addons.taskpulse.PulseTaskList;
 
-/** Shows a toast in a tab when a Task of the session finishes. */
-final class CompletionToasts {
+/** Shows a toast in a tab when a Task of the session finishes. {@link PulseWatcher} sets them up. */
+final class PulseToasts {
 
-    private CompletionToasts() {
+    private PulseToasts() {
     }
 
-    /** Shows the toasts for as long as the owner, which lives in the tab, is attached. */
-    static void showIn(Component owner, PulseTaskList taskList) {
+    /**
+     * Shows the toasts for as long as the owner, which lives in the tab, is
+     * attached. "Open" and "Details" go to the open handler, and are hidden
+     * without one.
+     */
+    static void showIn(Component owner, PulseTaskList taskList, Signal<Optional<Consumer<PulseTask>>> openHandler) {
         // The effect runs again on every change to the list, so the tab remembers what it has shown
         Set<PulseTask> handled = new HashSet<>();
         Signal.effect(owner, () -> taskList.tasks().getValues()
@@ -39,11 +42,11 @@ final class CompletionToasts {
                     }
                     Signal.untracked(() -> {
                         Notification toast = switch (outcome.get()) {
-                            case Outcome.Succeeded succeeded -> succeeded(task, succeeded);
-                            case Outcome.Failed failed -> failed(task, failed);
+                            case Outcome.Succeeded succeeded -> succeeded(task, succeeded, openHandler);
+                            case Outcome.Failed failed -> failed(task, failed, openHandler);
                             case Outcome.Cancelled cancelled -> null;
                         };
-                        owner.getUI().filter(CompletionToasts::visible).ifPresent(ui -> {
+                        owner.getUI().filter(PulseToasts::visible).ifPresent(ui -> {
                             if (toast != null) {
                                 // open() alone would attach the toast to whichever UI is current
                                 ui.add(toast);
@@ -61,32 +64,30 @@ final class CompletionToasts {
         return visibility == PageVisibility.VISIBLE || visibility == PageVisibility.VISIBLE_NOT_FOCUSED;
     }
 
-    private static Notification succeeded(PulseTask task, Outcome.Succeeded outcome) {
-        Notification toast = new Notification();
-        toast.addClassName("completion-toast");
+    private static Notification succeeded(PulseTask task, Outcome.Succeeded outcome,
+            Signal<Optional<Consumer<PulseTask>>> openHandler) {
+        Toast toast = new Toast();
         Span resultSummary = new Span(outcome.resultSummary());
-        resultSummary.addClassName("task-result-summary");
-        Button open = new Button("Open", e -> openDetails(e.getSource(), task, toast));
-        open.addThemeVariants(ButtonVariant.TERTIARY);
-        toast.add(icon(VaadinIcon.CHECK_CIRCLE, "succeeded"), text(task, resultSummary), open, dismiss(toast));
+        resultSummary.addClassName("pulse-result-summary");
+        toast.add(icon(VaadinIcon.CHECK_CIRCLE, "succeeded"), text(task, resultSummary),
+                openButton("Open", task, toast, openHandler), dismiss(toast));
         return toast;
     }
 
-    private static Notification failed(PulseTask task, Outcome.Failed outcome) {
-        Notification toast = new Notification();
-        toast.addClassName("completion-toast");
+    private static Notification failed(PulseTask task, Outcome.Failed outcome,
+            Signal<Optional<Consumer<PulseTask>>> openHandler) {
+        Toast toast = new Toast();
         toast.addThemeVariants(NotificationVariant.ERROR);
         Span errorMessage = new Span(outcome.errorMessage());
-        errorMessage.addClassName("task-error-message");
-        Button details = new Button("Details", e -> openDetails(e.getSource(), task, toast));
-        details.addThemeVariants(ButtonVariant.TERTIARY);
-        toast.add(icon(VaadinIcon.EXCLAMATION_CIRCLE, "failed"), text(task, errorMessage), details, dismiss(toast));
+        errorMessage.addClassName("pulse-error-message");
+        toast.add(icon(VaadinIcon.EXCLAMATION_CIRCLE, "failed"), text(task, errorMessage),
+                openButton("Details", task, toast, openHandler), dismiss(toast));
         return toast;
     }
 
     private static Component icon(VaadinIcon vaadinIcon, String state) {
         Icon icon = vaadinIcon.create();
-        icon.addClassNames("task-state-icon", state);
+        icon.addClassNames("pulse-state-icon", state);
         icon.getElement().setAttribute("aria-hidden", "true");
         return icon;
     }
@@ -94,10 +95,21 @@ final class CompletionToasts {
     /** The Task's name in bold, then what it produced or why it failed. */
     private static Div text(PulseTask task, Span outcome) {
         Span name = new Span(task.action().name());
-        name.addClassName("task-name");
+        name.addClassName("pulse-name");
         Div text = new Div(name, outcome);
-        text.addClassName("completion-toast-text");
+        text.addClassName("pulse-toast-text");
         return text;
+    }
+
+    private static Button openButton(String text, PulseTask task, Notification toast,
+            Signal<Optional<Consumer<PulseTask>>> openHandler) {
+        Button open = new Button(text, e -> {
+            openHandler.peek().ifPresent(handler -> handler.accept(task));
+            toast.close();
+        });
+        open.addThemeVariants(ButtonVariant.TERTIARY);
+        open.setVisible(openHandler.peek().isPresent());
+        return open;
     }
 
     private static Button dismiss(Notification toast) {
@@ -107,9 +119,12 @@ final class CompletionToasts {
         return dismiss;
     }
 
-    private static void openDetails(Component source, PulseTask task, Notification toast) {
-        source.getUI().ifPresent(ui -> ui.navigate(TasksView.class,
-                new RouteParameters(TasksView.TASK_ID, String.valueOf(task.id()))));
-        toast.close();
+    /** A toast that loads the add-on's stylesheet wherever it opens. */
+    @StyleSheet(PulseTaskParts.STYLESHEET)
+    private static final class Toast extends Notification {
+
+        Toast() {
+            addClassName("pulse-toast");
+        }
     }
 }

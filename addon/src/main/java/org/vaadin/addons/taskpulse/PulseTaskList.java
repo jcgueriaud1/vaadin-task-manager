@@ -10,11 +10,15 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ListSignal;
 import org.vaadin.addons.taskpulse.PulseTask.Retry;
 
-/** All Tasks of one user session, Running and Finished. */
+/**
+ * All Tasks of one user session, Running and Finished. Every browser tab of the
+ * session sees the same list: get it with {@link #getCurrent()}.
+ */
 public class PulseTaskList {
 
     /** The Task list keeps at most this many Tasks, evicting the oldest Finished Task first. */
@@ -32,6 +36,55 @@ public class PulseTaskList {
     /** A Task list whose Tasks take their start and finish times from the clock. */
     public PulseTaskList(Clock clock) {
         this.clock = clock;
+    }
+
+    /**
+     * The Task list of the current session, created on first use. It is kept as
+     * an attribute of the {@link VaadinSession}.
+     *
+     * @throws IllegalStateException if there is no current session
+     */
+    public static PulseTaskList getCurrent() {
+        VaadinSession session = VaadinSession.getCurrent();
+        if (session == null) {
+            throw new IllegalStateException("There is no current VaadinSession");
+        }
+        return get(session);
+    }
+
+    /** The Task list of the session, created on first use. */
+    public static PulseTaskList get(VaadinSession session) {
+        session.lock();
+        try {
+            PulseTaskList taskList = session.getAttribute(PulseTaskList.class);
+            if (taskList == null) {
+                taskList = new PulseTaskList();
+                session.setAttribute(PulseTaskList.class, taskList);
+            }
+            return taskList;
+        } finally {
+            session.unlock();
+        }
+    }
+
+    /**
+     * Makes the given Task list the session's, for example one with another
+     * clock. Call it before anything uses the session's Task list.
+     *
+     * @return the given Task list
+     * @throws IllegalStateException if the session already has a Task list
+     */
+    public static PulseTaskList install(VaadinSession session, PulseTaskList taskList) {
+        session.lock();
+        try {
+            if (session.getAttribute(PulseTaskList.class) != null) {
+                throw new IllegalStateException("The session already has a Task list");
+            }
+            session.setAttribute(PulseTaskList.class, taskList);
+            return taskList;
+        } finally {
+            session.unlock();
+        }
     }
 
     public ListSignal<PulseTask> tasks() {

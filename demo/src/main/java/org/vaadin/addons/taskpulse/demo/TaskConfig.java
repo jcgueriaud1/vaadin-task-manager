@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.spring.annotation.VaadinSessionScope;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 
@@ -28,10 +29,14 @@ public class TaskConfig {
         return Clock.systemDefaultZone();
     }
 
-    /** The Task list of the current session, shared by all its browser tabs (ADR 0001). */
+    /**
+     * The Task list of the current session, shared by all its browser tabs. It is
+     * installed in the session with this app's clock, so it is also the one that
+     * {@link PulseTaskList#getCurrent()} returns (ADR 0001, ADR 0003).
+     */
     @Bean
     @VaadinSessionScope
     public PulseTaskList taskList(Clock clock) {
-        return new PulseTaskList(clock);
+        return PulseTaskList.install(VaadinSession.getCurrent(), new PulseTaskList(clock));
     }
 }

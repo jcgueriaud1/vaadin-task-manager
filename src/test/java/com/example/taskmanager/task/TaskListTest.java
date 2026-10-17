@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,8 +23,8 @@ class TaskListTest {
 
     @Test
     void dismissedTaskLeavesTheTrayButStaysInTheTaskList() {
-        Task sent = start(newsletter, ctx -> {});
-        Task generated = start(report, ctx -> {});
+        Task sent = taskList.start(newsletter, executor, ctx -> {});
+        Task generated = taskList.start(report, executor, ctx -> {});
         executor.runAll();
 
         taskList.dismiss(sent);
@@ -35,7 +35,7 @@ class TaskListTest {
 
     @Test
     void aRunningTaskCannotBeDismissed() {
-        Task running = taskList.start(newsletter);
+        Task running = taskList.start(newsletter, executor, ctx -> {});
 
         assertThrows(IllegalStateException.class, () -> taskList.dismiss(running));
         assertEquals(List.of(running), taskList.trayTasks().peek());
@@ -45,8 +45,8 @@ class TaskListTest {
     void runningCountFollowsTasksStartingAndFinishing() {
         assertEquals(0, taskList.runningCount().peek());
 
-        start(newsletter, ctx -> {});
-        start(report, ctx -> {});
+        taskList.start(newsletter, executor, ctx -> {});
+        taskList.start(report, executor, ctx -> {});
         assertEquals(2, taskList.runningCount().peek());
 
         executor.runNext();
@@ -57,8 +57,12 @@ class TaskListTest {
     }
 
     @Test
-    void retryStartsANewTaskThroughItsCallbackAndLeavesTheOldOneAsItWas() {
-        Task failed = startSyncFailing(ctx -> {});
+    void retryStartsANewTaskWithTheSameWorkOnTheSameExecutorAndLeavesTheOldOneAsItWas() {
+        List<String> runs = new ArrayList<>();
+        Task failed = taskList.start(sync, executor, ctx -> {
+            runs.add("sync");
+            throw new IllegalStateException("Server unreachable");
+        });
         executor.runAll();
         assertTrue(failed.canRetry());
 
@@ -69,15 +73,19 @@ class TaskListTest {
         assertSame(retried, returned);
         assertEquals(sync, retried.action());
         assertEquals(TaskState.RUNNING, retried.state().peek());
+        assertEquals(1, executor.queued(), "the retry waits on the same executor");
+        executor.runAll();
+        assertEquals(List.of("sync", "sync"), runs);
+        assertEquals(TaskState.FAILED, retried.state().peek());
         assertEquals(TaskState.FAILED, failed.state().peek());
         assertEquals("Server unreachable", failed.errorMessage().peek());
     }
 
     @Test
-    void aTaskStartedWithoutACallbackCannotBeRetried() {
-        Task failed = start(sync, ctx -> {
+    void aTaskStartedAsNeverRetryableCannotBeRetried() {
+        Task failed = taskList.start(sync, executor, ctx -> {
             throw new IllegalStateException("Server unreachable");
-        });
+        }, Retry.NEVER);
         executor.runAll();
 
         assertFalse(failed.canRetry());
@@ -87,8 +95,7 @@ class TaskListTest {
 
     @Test
     void retryIsRefusedForASucceededTask() {
-        Task succeeded = taskList.start(newsletter, () -> taskList.start(newsletter));
-        succeeded.run(ctx -> {});
+        Task succeeded = taskList.start(newsletter, Runnable::run, ctx -> {});
 
         assertThrows(IllegalStateException.class, () -> taskList.retry(succeeded));
         assertEquals(1, taskList.tasks().peek().size());
@@ -96,7 +103,10 @@ class TaskListTest {
 
     @Test
     void retryIsRefusedWhileTheActionAlreadyHasARunningTask() {
-        Task failed = startSyncFailing(ctx -> executor.pause());
+        Task failed = taskList.start(sync, executor, ctx -> {
+            executor.pause();
+            throw new IllegalStateException("Server unreachable");
+        });
         executor.runAll();
         taskList.retry(failed);
 
@@ -106,12 +116,12 @@ class TaskListTest {
 
     @Test
     void clearFinishedRemovesEveryFinishedTaskAndKeepsTheRunningOnes() {
-        start(newsletter, ctx -> {});
-        start(sync, ctx -> {
+        taskList.start(newsletter, executor, ctx -> {});
+        taskList.start(sync, executor, ctx -> {
             throw new IllegalStateException("Server unreachable");
         });
         executor.runAll();
-        Task running = start(export, ctx -> executor.pause());
+        Task running = taskList.start(export, executor, ctx -> executor.pause());
         executor.runNext();
 
         taskList.clearFinished();
@@ -121,17 +131,17 @@ class TaskListTest {
 
     @Test
     void theTaskListKeepsAtMostFiftyTasksEvictingTheOldestFinishedFirst() {
-        Task running = taskList.start(report);
+        Task running = taskList.start(report, executor, ctx -> {});
         for (int i = 0; i < 49; i++) {
-            // Run on the test's thread: the Task list doesn't care where work runs
-            taskList.start(newsletter).run(ctx -> {});
+            // Run on the test's thread: any Executor will do
+            taskList.start(newsletter, Runnable::run, ctx -> {});
         }
         List<Task> before = taskList.tasks().peekValues().toList();
         Task oldestFinished = before.get(1);
         Task secondOldestFinished = before.get(2);
         assertEquals(50, before.size());
 
-        Task newest = taskList.start(sync);
+        Task newest = taskList.start(sync, executor, ctx -> {});
 
         List<Task> tasks = taskList.tasks().peekValues().toList();
         assertEquals(50, tasks.size());
@@ -145,16 +155,16 @@ class TaskListTest {
     void overallProgressAveragesRunningTasksThatReportProgress() {
         assertEquals(Optional.empty(), taskList.overallProgress().peek());
 
-        start(newsletter, ctx -> {
+        taskList.start(newsletter, executor, ctx -> {
             ctx.setStatusText("Sending emails");
             executor.pause();
         });
-        start(export, ctx -> {
+        taskList.start(export, executor, ctx -> {
             ctx.setProgress(0.75);
             executor.pause();
             ctx.setProgress(1);
         });
-        start(report, ctx -> {
+        taskList.start(report, executor, ctx -> {
             ctx.setProgress(0.25);
             executor.pause();
         });
@@ -174,21 +184,7 @@ class TaskListTest {
         assertEquals(Optional.empty(), taskList.overallProgress().peek());
     }
 
-    private Task start(Action action, Consumer<TaskContext> work) {
-        Task task = taskList.start(action);
-        executor.execute(() -> task.run(work));
-        return task;
-    }
 
-    /** Starts Sync with server, which fails after the given step, and can be Retried the same way. */
-    private Task startSyncFailing(Consumer<TaskContext> step) {
-        Task task = taskList.start(sync, () -> startSyncFailing(step));
-        executor.execute(() -> task.run(ctx -> {
-            step.accept(ctx);
-            throw new IllegalStateException("Server unreachable");
-        }));
-        return task;
-    }
 
     private Task task(int index) {
         return taskList.tasks().peekValues().toList().get(index);

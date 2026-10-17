@@ -7,11 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.junit.jupiter.api.Test;
 
-/** The application starts a Task in the Task list and runs its work on a thread of its own choosing. */
+/** The application starts a Task with its work and the executor that runs it. */
 class TaskRunTest {
 
     private final TestExecutor executor = new TestExecutor();
@@ -21,7 +22,7 @@ class TaskRunTest {
 
     @Test
     void startedTaskIsRunningUntilItsWorkReturnsThenSucceeded() {
-        Task task = start(newsletter, ctx -> {});
+        Task task = taskList.start(newsletter, executor, ctx -> {});
 
         assertEquals(List.of(task), taskList.tasks().peekValues().toList());
         assertEquals(newsletter, task.action());
@@ -33,8 +34,8 @@ class TaskRunTest {
     }
 
     @Test
-    void aTaskWhoseWorkNeverRunsStaysRunning() {
-        Task task = taskList.start(newsletter);
+    void aTaskStaysRunningUntilTheExecutorRunsItsWork() {
+        Task task = taskList.start(newsletter, executor, ctx -> {});
 
         assertEquals(TaskState.RUNNING, task.state().peek());
         assertTrue(taskList.isRunning(newsletter).peek());
@@ -42,7 +43,7 @@ class TaskRunTest {
 
     @Test
     void statusTextFollowsWhatTheWorkReports() {
-        Task task = start(newsletter, ctx -> {
+        Task task = taskList.start(newsletter, executor, ctx -> {
             ctx.setStatusText("Preparing recipients");
             executor.pause();
             ctx.setStatusText("Sending emails");
@@ -61,7 +62,7 @@ class TaskRunTest {
     @Test
     void cancelledTaskStopsAtItsNextStatusTextAndEndsCancelled() {
         List<String> reachedSteps = new ArrayList<>();
-        Task task = start(newsletter, ctx -> {
+        Task task = taskList.start(newsletter, executor, ctx -> {
             ctx.setStatusText("Preparing recipients");
             executor.pause();
             ctx.setStatusText("Sending emails");
@@ -80,7 +81,7 @@ class TaskRunTest {
     @Test
     void workThatChecksIsCancelledCanStopQuietlyAndTheTaskStillEndsCancelled() {
         List<Boolean> seen = new ArrayList<>();
-        Task task = start(newsletter, ctx -> {
+        Task task = taskList.start(newsletter, executor, ctx -> {
             seen.add(ctx.isCancelled());
             executor.pause();
             seen.add(ctx.isCancelled());
@@ -97,7 +98,7 @@ class TaskRunTest {
 
     @Test
     void cancelledTaskStopsAtItsNextProgressAndEndsCancelled() {
-        Task task = start(report, ctx -> {
+        Task task = taskList.start(report, executor, ctx -> {
             ctx.setProgress(0.25);
             executor.pause();
             ctx.setProgress(0.5);
@@ -113,7 +114,7 @@ class TaskRunTest {
 
     @Test
     void workThatThrowsMakesTheTaskFailedWithTheExceptionsMessage() {
-        Task task = start(newsletter, ctx -> {
+        Task task = taskList.start(newsletter, executor, ctx -> {
             throw new IllegalStateException("Server unreachable");
         });
         assertEquals("", task.errorMessage().peek());
@@ -127,32 +128,32 @@ class TaskRunTest {
 
     @Test
     void anActionWithARunningTaskRefusesToStartAgainUntilItFinishes() {
-        start(newsletter, ctx -> {});
+        taskList.start(newsletter, executor, ctx -> {});
         assertTrue(taskList.isRunning(newsletter).peek());
         assertFalse(taskList.isRunning(report).peek());
 
-        assertThrows(IllegalStateException.class, () -> taskList.start(newsletter));
-        start(report, ctx -> {});
+        assertThrows(IllegalStateException.class, () -> taskList.start(newsletter, executor, ctx -> {}));
+        taskList.start(report, executor, ctx -> {});
         assertEquals(2, taskList.tasks().peek().size());
 
         executor.runAll();
 
         assertFalse(taskList.isRunning(newsletter).peek());
-        start(newsletter, ctx -> {});
+        taskList.start(newsletter, executor, ctx -> {});
         assertEquals(3, taskList.tasks().peek().size());
     }
 
     @Test
     void actionsWithTheSameNameAndBlockingModeAreTheSameAction() {
-        taskList.start(new Action("Send newsletter", BlockingMode.NON_BLOCKING));
+        taskList.start(new Action("Send newsletter", BlockingMode.NON_BLOCKING), executor, ctx -> {});
 
         assertTrue(taskList.isRunning(newsletter).peek());
-        assertThrows(IllegalStateException.class, () -> taskList.start(newsletter));
+        assertThrows(IllegalStateException.class, () -> taskList.start(newsletter, executor, ctx -> {}));
     }
 
     @Test
     void aTaskIsIndeterminateUntilItsWorkReportsProgress() {
-        Task task = start(report, ctx -> {
+        Task task = taskList.start(report, executor, ctx -> {
             ctx.setStatusText("Collecting data");
             executor.pause();
             ctx.setProgress(0.25);
@@ -167,7 +168,7 @@ class TaskRunTest {
 
     @Test
     void progressFollowsWhatTheWorkReportsClampedToZeroToOne() {
-        Task task = start(report, ctx -> {
+        Task task = taskList.start(report, executor, ctx -> {
             ctx.setProgress(0.25);
             executor.pause();
             ctx.setProgress(1.5);
@@ -189,7 +190,7 @@ class TaskRunTest {
 
     @Test
     void aTaskCanEndWithAResultSummary() {
-        Task task = start(newsletter, ctx -> ctx.setResultSummary("1,240 emails sent"));
+        Task task = taskList.start(newsletter, executor, ctx -> ctx.setResultSummary("1,240 emails sent"));
         assertEquals("", task.resultSummary().peek());
 
         executor.runAll();
@@ -198,9 +199,75 @@ class TaskRunTest {
         assertEquals("1,240 emails sent", task.resultSummary().peek());
     }
 
-    private Task start(Action action, Consumer<TaskContext> work) {
-        Task task = taskList.start(action);
-        executor.execute(() -> task.run(work));
-        return task;
+    @Test
+    void workCanRunOnTheCallersThread() {
+        Task task = taskList.start(newsletter, Runnable::run, ctx -> ctx.setResultSummary("1,240 emails sent"));
+
+        assertEquals(TaskState.SUCCEEDED, task.state().peek());
+        assertEquals("1,240 emails sent", task.resultSummary().peek());
+    }
+
+    @Test
+    void aTaskCancelledBeforeTheExecutorRunsItEndsCancelledWithoutRunningItsWork() {
+        List<String> ran = new ArrayList<>();
+        Task task = taskList.start(newsletter, executor, ctx -> ran.add("work"));
+
+        task.cancel();
+        executor.runAll();
+
+        assertEquals(List.of(), ran);
+        assertEquals(TaskState.CANCELLED, task.state().peek());
+        assertFalse(taskList.isRunning(newsletter).peek());
+    }
+
+    @Test
+    void workThatThrowsACheckedExceptionMakesTheTaskFailed() {
+        Task task = taskList.start(newsletter, executor, ctx -> sneakyThrow(new java.io.IOException("Disk full")));
+
+        executor.runAll();
+
+        assertEquals(TaskState.FAILED, task.state().peek());
+        assertEquals("Disk full", task.errorMessage().peek());
+        assertFalse(taskList.isRunning(newsletter).peek());
+    }
+
+    @Test
+    void workThatThrowsAnErrorMakesTheTaskFailedAndTheErrorStillReachesTheThread() {
+        Error error = assertThrows(Error.class, () -> taskList.start(newsletter, Runnable::run, ctx -> {
+            throw new StackOverflowError("Too deep");
+        }));
+
+        assertEquals("Too deep", error.getMessage());
+        Task task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        assertEquals(TaskState.FAILED, task.state().peek());
+        assertEquals("Too deep", task.errorMessage().peek());
+        assertFalse(taskList.isRunning(newsletter).peek());
+    }
+
+    @Test
+    void anExecutorThatRefusesTheWorkMakesTheTaskFailedInsteadOfLeavingItRunning() {
+        Executor shutDown = command -> {
+            throw new RejectedExecutionException("Executor is shut down");
+        };
+
+        Task task = taskList.start(newsletter, shutDown, ctx -> {});
+
+        assertEquals(TaskState.FAILED, task.state().peek());
+        assertEquals("Couldn't start: Executor is shut down", task.errorMessage().peek());
+        assertFalse(taskList.isRunning(newsletter).peek());
+    }
+
+    @Test
+    void aTaskRunsItsWorkAtMostOnce() {
+        Task task = taskList.start(newsletter, Runnable::run, ctx -> {});
+
+        IllegalStateException again = assertThrows(IllegalStateException.class, () -> task.run(ctx -> {}));
+        assertEquals("Task " + task.id() + " already ran", again.getMessage());
+        assertEquals(TaskState.SUCCEEDED, task.state().peek());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> void sneakyThrow(Throwable e) throws E {
+        throw (E) e;
     }
 }

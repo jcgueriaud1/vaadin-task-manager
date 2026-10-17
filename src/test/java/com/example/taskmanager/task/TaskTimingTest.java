@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,10 +15,11 @@ class TaskTimingTest {
     private final TestExecutor executor = new TestExecutor();
     private final TestClock clock = new TestClock(START);
     private final TaskList taskList = new TaskList(clock);
+    private final Action report = new Action("Generate report", BlockingMode.NON_BLOCKING);
 
     @Test
     void aRunningTaskHasRunSinceItStartedAndAFinishedOneKeepsHowLongItTook() {
-        Task task = start(ctx -> {
+        Task task = taskList.start(report, executor, ctx -> {
             executor.pause();
             clock.advance(Duration.ofSeconds(30));
         });
@@ -37,7 +37,7 @@ class TaskTimingTest {
 
     @Test
     void timeLeftIsAStraightLineEstimateFromProgressShownOnlyAboveFivePercent() {
-        Task task = start(ctx -> {
+        Task task = taskList.start(report, executor, ctx -> {
             clock.advance(Duration.ofSeconds(2));
             ctx.setProgress(0.05);
             executor.pause();
@@ -61,7 +61,7 @@ class TaskTimingTest {
 
     @Test
     void aTaskWithoutProgressHasNoTimeLeft() {
-        Task task = start(ctx -> {
+        Task task = taskList.start(report, executor, ctx -> {
             ctx.setStatusText("Sending emails");
             executor.pause();
         });
@@ -71,9 +71,4 @@ class TaskTimingTest {
         assertEquals(Optional.empty(), task.timeLeft(clock.instant()));
     }
 
-    private Task start(Consumer<TaskContext> work) {
-        Task task = taskList.start(new Action("Generate report", BlockingMode.NON_BLOCKING));
-        executor.execute(() -> task.run(work));
-        return task;
-    }
 }

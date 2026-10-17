@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.example.taskmanager.task.Action;
 import com.example.taskmanager.task.BlockingMode;
-import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskContext;
 import com.example.taskmanager.task.TaskList;
 import com.vaadin.flow.component.button.Button;
@@ -213,7 +212,8 @@ public class ActionsView extends Div {
      * Running Task, in any tab of the session, it says so and is disabled.
      */
     private Button startButton(Action action, Consumer<TaskContext> work) {
-        Button button = new Button("Start", e -> BlockingTaskDialog.openIfBlocking(start(action, work)));
+        Button button = new Button("Start",
+                e -> BlockingTaskDialog.openIfBlocking(taskList.start(action, executor, work)));
         Signal<Boolean> running = taskList.isRunning(action);
         button.bindText(running.map(r -> r ? action.name() + " running…" : "Start"));
         button.bindEnabled(Signal.not(running));
@@ -221,23 +221,13 @@ public class ActionsView extends Div {
         return button;
     }
 
-    /**
-     * Starts a Task of the Action and runs its work on the executor. Retrying the
-     * Task starts it the same way.
-     */
-    private Task start(Action action, Consumer<TaskContext> work) {
-        Task task = taskList.start(action, () -> start(action, work));
-        executor.execute(() -> task.run(work));
-        return task;
-    }
-
     private static Div intro() {
         Div intro = new Div(
                 new H2("Async Actions"),
                 new Paragraph("""
                         Each card below is an Action, a name and a blocking mode, with the work it does. \
-                        Its start button is a regular Button: the view starts a Task in the Task list and \
-                        runs the work on a virtual thread of its own choosing. The work reports back \
+                        Its start button is a regular Button: the view starts a Task in the Task list with \
+                        its work and the executor to run it on, here virtual threads. The work reports back \
                         through the Task's signals, and the tray, the navbar, the dialog and every open \
                         tab of your session follow along."""),
                 new Paragraph("""
@@ -245,20 +235,14 @@ public class ActionsView extends Div {
                         tab before it finishes. You get a toast when it ends, or a native notification \
                         and a count in the page title if no tab was visible."""),
                 code("Show how the buttons start Tasks", """
-                        Button button = new Button("Start", e ->
-                                BlockingTaskDialog.openIfBlocking(start(action, work)));
+                        // Any Executor will do: virtual threads, Spring's TaskExecutor, Runnable::run…
+                        // Retry starts the same work on the same executor.
+                        Button button = new Button("Start", e -> BlockingTaskDialog.openIfBlocking(
+                                taskList.start(action, executor, work)));
                         // Locked while the Action runs, in any tab of the session
                         Signal<Boolean> running = taskList.isRunning(action);
                         button.bindText(running.map(r -> r ? action.name() + " running…" : "Start"));
-                        button.bindEnabled(Signal.not(running));
-
-                        Task start(Action action, Consumer<TaskContext> work) {
-                            // The callback is how Retry starts it again
-                            Task task = taskList.start(action, () -> start(action, work));
-                            // Any thread will do: an executor, Thread.startVirtualThread, @Async…
-                            executor.execute(() -> task.run(work));
-                            return task;
-                        }"""));
+                        button.bindEnabled(Signal.not(running));"""));
         intro.addClassName("actions-intro");
         return intro;
     }

@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Import;
 
 import com.example.taskmanager.task.Action;
 import com.example.taskmanager.task.BlockingMode;
-import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TestExecutor;
 import com.vaadin.browserless.SpringBrowserlessTest;
@@ -117,16 +116,15 @@ class ActionsViewTest extends SpringBrowserlessTest {
     void aClickThatLosesTheRaceWithAnotherTabIsDroppedAsTheButtonIsAlreadyLocked() {
         Button importData = startButton("Import data");
         // Another tab starts it while this tab's click is on its way to the server
-        Task elsewhere = context.getBean(TaskList.class).start(new Action("Import data", BlockingMode.BLOCKING));
+        context.getBean(TaskList.class).start(new Action("Import data", BlockingMode.BLOCKING), executor, ctx -> {});
 
         assertFalse(importData.isEnabled());
         importData.click();
         runPendingSignalsTasks();
 
-        assertEquals(0, executor.queued());
+        assertEquals(1, executor.queued(), "only the other tab's Task");
         assertFalse($(Dialog.class).exists());
         assertEquals("Import data running…", importData.getText());
-        elsewhere.run(ctx -> {});
     }
 
     private Button cancelButton(String actionName) {

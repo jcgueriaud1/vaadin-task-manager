@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -19,8 +20,8 @@ import com.vaadin.flow.signals.local.ValueSignal;
  * which every view follows: the tray, the task center, the Background tasks
  * page and the {@code BlockingTaskDialog}.
  * <p>
- * The application runs the work itself, on any thread, by passing it to
- * {@link #run(Consumer)}.
+ * The application starts it with {@link TaskList#start(Action, java.util.concurrent.Executor, Consumer)},
+ * which runs its work.
  */
 public final class Task {
 
@@ -44,6 +45,7 @@ public final class Task {
     private final Instant startedAt;
     private volatile Instant finishedAt;
     private volatile boolean cancelled;
+    private final AtomicBoolean ran = new AtomicBoolean();
 
     Task(long id, Action action, TaskList taskList, Supplier<Task> retry, Clock clock) {
         this.id = id;
@@ -104,7 +106,7 @@ public final class Task {
         return reportsProgress.asReadonly();
     }
 
-    /** Whether whoever started the Task said how to Retry it. */
+    /** Whether the Task can be Retried once it is Failed or Cancelled: it wasn't started with {@link Retry#NEVER}. */
     public boolean canRetry() {
         return retry != null;
     }
@@ -138,14 +140,23 @@ public final class Task {
     }
 
     /**
-     * Runs the work on the calling thread and ends the Task with its outcome:
-     * Succeeded if it returns, Cancelled if the user cancelled it, and Failed,
-     * with the exception's message, if it throws. Call it from the thread the
-     * application chose, for example {@code Thread.startVirtualThread(() -> task.run(work))}
-     * or an {@code @Async} method. It never throws: a failure is logged.
+     * Runs the work on the calling thread, once, and ends the Task with its
+     * outcome: Cancelled without running the work if the user already cancelled
+     * it, Succeeded if the work returns, Cancelled if the user cancelled it
+     * meanwhile, and Failed, with the message, if it throws. An {@link Error} is
+     * rethrown after the Task ends Failed.
+     *
+     * @throws IllegalStateException if the Task already ran
      */
-    public void run(Consumer<? super TaskContext> work) {
+    void run(Consumer<? super TaskContext> work) {
+        if (!ran.compareAndSet(false, true)) {
+            throw new IllegalStateException("Task " + id + " already ran");
+        }
         try {
+            if (cancelled) {
+                markCancelled();
+                return;
+            }
             TaskContext context = context();
             work.accept(context);
             if (context.isCancelled()) {
@@ -154,17 +165,35 @@ public final class Task {
             succeed();
         } catch (CancellationException e) {
             markCancelled();
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             log.error("Task of {} failed", action.name(), e);
-            fail(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            fail(messageOf(e));
+        } catch (Error e) {
+            log.error("Task of {} failed", action.name(), e);
+            fail(messageOf(e));
+            throw e;
+        } finally {
+            taskList.finished(this);
         }
-        taskList.finished(this);
     }
 
-    /** Starts a new Task through the callback given when this one was started. */
+    /** The executor refused the work: the Task ends Failed without running it. */
+    void couldNotStart(Exception e) {
+        if (ran.compareAndSet(false, true)) {
+            log.error("Task of {} couldn't start", action.name(), e);
+            fail("Couldn't start: " + messageOf(e));
+            taskList.finished(this);
+        }
+    }
+
+    private static String messageOf(Throwable e) {
+        return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+    }
+
+    /** Starts a new Task with the same work on the same executor. */
     Task retry() {
         if (retry == null) {
-            throw new IllegalStateException("Whoever started this Task didn't say how to Retry it");
+            throw new IllegalStateException("Task " + id + " was started as never retryable");
         }
         return retry.get();
     }

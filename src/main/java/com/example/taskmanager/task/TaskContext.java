@@ -1,6 +1,6 @@
 package com.example.taskmanager.task;
 
-/** What the work of a Task can report through {@link Task#run(java.util.function.Consumer)}. */
+/** What the work of a Task can report while it runs. */
 public interface TaskContext {
 
     /**

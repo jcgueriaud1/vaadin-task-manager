@@ -45,8 +45,8 @@ src/main/java/com/example/taskmanager/
 
 ## Running work as Tasks
 
-You don't hand your work to the Task list. You start a **Task** in it, run the work yourself, on whatever
-thread you like, and report through the Task. Every view follows the Task's signals: the tray, the task center,
+An **Action** holds no work. You start a **Task** of it with the work and the executor to run it on, so you
+choose the thread, and the work reports through the Task. Every view follows the Task's signals: the tray, the task center,
 the Background tasks page and the blocking dialog. The demo is in
 [`ActionsView`](src/main/java/com/example/taskmanager/ui/ActionsView.java), and the Actions page shows each
 Action's code next to its start button. [ADR 0002](docs/adr/0002-application-runs-the-work-of-tasks.md)
@@ -86,36 +86,35 @@ static void importData(TaskContext ctx) {
 }
 ```
 
-### 3. Start a Task and run the work
+### 3. Start a Task
 
-`taskList.start(action, retry)` adds a Running Task and returns it. Then run the work with
-`task.run(work)` on any thread. `run` ends the Task with the work's outcome: Succeeded if it returns, Cancelled
-if the user cancelled it, and Failed if it throws. The `retry` callback is how the Background tasks page
-Retries the Task: it should start a new Task the same way. Pass none, or use `taskList.start(action)`, and the
-Task can't be retried.
+`taskList.start(action, executor, work)` adds a Running Task, hands the work to the executor, and returns the
+Task. The executor decides where the work runs:
 
-```java
-Task start() {
-    Task task = taskList.start(IMPORT_DATA, this::start);
-    Thread.startVirtualThread(() -> task.run(ActionsView::importData));
-    return task;
-}
-```
-
-Spring's `@Async` works just as well:
+| Executor                                | The work runs                                              |
+|-----------------------------------------|------------------------------------------------------------|
+| `Executors.newVirtualThreadPerTaskExecutor()` | on a virtual thread of its own (the demo's `Executor` bean) |
+| Spring's `TaskExecutor`, e.g. the `@Async` pool | on that pool's threads                             |
+| `Runnable::run`                         | on the calling thread, before `start` returns: a scheduled job or a queue consumer that already has its own thread |
 
 ```java
-@Service
-class Importer {
-    @Async
-    public void importData(Task task) {
-        task.run(ctx -> { /* ... */ });
-    }
-}
+Task task = taskList.start(IMPORT_DATA, executor, ActionsView::importData);
 ```
 
-The demo runs its work on an injected `Executor` bean, so that the tests can replace it and step through the
-work.
+The Task always ends. It ends Succeeded when the work returns, Cancelled when the user cancelled it (even before
+the work started, in which case the work never runs), and Failed when the work throws or the executor refuses
+it. Retry, from the Background tasks page, starts the same work on the same executor. For work that must not
+run twice, such as a payment, start it with `Retry.NEVER` and it can't be retried:
+
+```java
+taskList.start(CHARGE_CARD, executor, payments::charge, Retry.NEVER);
+```
+
+The work reports only through its `TaskContext`. It must not hold on to a view or its components: a Retry,
+perhaps from another tab after this one closed, runs the same work again. The demo's work is static methods for
+that reason.
+
+The demo injects the `Executor` bean, so that the tests can replace it with one that steps through the work.
 
 ### 4. Start it from a view
 
@@ -123,7 +122,8 @@ Use a regular `Button`. Bind it to `taskList.isRunning(action)` so the Action ne
 `BlockingTaskDialog` if the Action is Blocking:
 
 ```java
-Button button = new Button("Start", e -> BlockingTaskDialog.openIfBlocking(start()));
+Button button = new Button("Start", e -> BlockingTaskDialog.openIfBlocking(
+        taskList.start(IMPORT_DATA, executor, ActionsView::importData)));
 Signal<Boolean> running = taskList.isRunning(IMPORT_DATA);
 button.bindText(running.map(r -> r ? "Import data running…" : "Start"));
 button.bindEnabled(Signal.not(running));
@@ -138,11 +138,13 @@ never gets there: Vaadin drops clicks on disabled components.
 ### Failure and Cancellation
 
 - **Failure**: any exception the work throws makes the Task Failed, with the exception's message as its error.
-  The stack trace goes to the server log. Users can Retry it from the Background tasks page.
+  The stack trace goes to the server log. An `Error`, such as `OutOfMemoryError`, also makes it Failed and is
+  then rethrown on the executor's thread. Users can Retry it from the Background tasks page.
 - **Cancellation**: when the user cancels, the next `setStatusText`, `setResultSummary` or `setProgress` call
   throws a `CancellationException` and the Task ends Cancelled. Work that rarely reports should check
   `ctx.isCancelled()` and return early. Work that ignores both still ends Cancelled, but only when it returns.
-- A Task whose work is never run stays Running.
+- A Task never stays Running for good: an executor that refuses the work makes it Failed, with "Couldn't start"
+  and the reason.
 
 ## Running the application
 

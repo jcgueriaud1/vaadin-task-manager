@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Import;
 
 import com.example.taskmanager.task.Action;
 import com.example.taskmanager.task.BlockingMode;
+import com.example.taskmanager.task.Retry;
 import com.example.taskmanager.task.Task;
 import com.example.taskmanager.task.TaskList;
 import com.example.taskmanager.task.TestClock;
@@ -212,10 +213,11 @@ class TasksViewTest extends SpringBrowserlessTest {
     }
 
     @Test
-    void aTaskStartedWithoutARetryCallbackHasNoRetry() {
-        Task task = taskList().start(new Action("Rebuild index", BlockingMode.NON_BLOCKING));
+    void aTaskStartedAsNeverRetryableHasNoRetry() {
+        Task task = taskList().start(new Action("Rebuild index", BlockingMode.NON_BLOCKING), executor,
+                ctx -> ctx.setStatusText("Reading documents"), Retry.NEVER);
         task.cancel();
-        task.run(ctx -> ctx.setStatusText("Reading documents"));
+        executor.runAll();
         navigate(TasksView.class);
         selectTab("Cancelled");
         select("Rebuild index");

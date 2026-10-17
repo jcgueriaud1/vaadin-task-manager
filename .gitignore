@@ -27,7 +27,7 @@ replay_pid*
 !.mvn/wrapper/maven-wrapper.jar
 
 # Vaadin / Maven (from skeleton-starter-flow-spring)
-/target/
+target/
 .idea/
 .vscode/
 .settings
@@ -39,7 +39,7 @@ replay_pid*
 
 # The following files are generated/updated by vaadin-maven-plugin
 node_modules/
-src/main/frontend/generated/
+**/src/main/frontend/generated/
 pnpmfile.js
 vite.generated.ts
 

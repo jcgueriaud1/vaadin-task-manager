@@ -164,15 +164,15 @@ public class PulseTaskList {
                 .count());
     }
 
-    /** Registers a browser tab of this session. It starts visible. */
-    public synchronized Tab openTab() {
+    /** Registers a browser tab of this session. It starts visible. {@link PulseTab} does it for each tab. */
+    synchronized Tab openTab() {
         Tab tab = new Tab();
         tabs.add(tab);
         return tab;
     }
 
     /** A browser tab of the session, which reports whether it is visible. */
-    public final class Tab {
+    final class Tab {
 
         private boolean visible = true;
 
@@ -180,7 +180,7 @@ public class PulseTaskList {
         }
 
         /** Reports whether the tab is visible, focused or not. */
-        public void setVisible(boolean visible) {
+        void setVisible(boolean visible) {
             synchronized (PulseTaskList.this) {
                 this.visible = visible;
                 if (visible) {
@@ -190,16 +190,17 @@ public class PulseTaskList {
         }
 
         /** The tab is gone; it no longer counts as visible. */
-        public void close() {
+        void close() {
             synchronized (PulseTaskList.this) {
                 tabs.remove(this);
             }
         }
     }
 
-    /** Called when a Task finishes: it is Unseen if no tab of the session is visible. */
+    /** Called when a Task finishes: it is Unseen if the session has tabs and none of them is visible. */
     synchronized void finished(PulseTask task) {
-        if (tabs.stream().noneMatch(tab -> tab.visible)) {
+        // With no tab tracked, nobody could have missed it
+        if (!tabs.isEmpty() && tabs.stream().noneMatch(tab -> tab.visible)) {
             task.markUnseen(true);
         }
     }

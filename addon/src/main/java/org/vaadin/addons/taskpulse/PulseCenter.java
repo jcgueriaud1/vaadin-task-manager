@@ -20,23 +20,30 @@ import com.vaadin.flow.signals.local.ValueSignal;
 
 /**
  * The navbar button that says how many Tasks are Running, with a ring for their
- * overall Progress. It opens a popover with the Running and recent Finished Tasks.
+ * overall Progress. It opens a popover with the Running and recent Finished
+ * Tasks, and the button that turns on native notifications. "Open" and "View
+ * all" do what the tab's {@link PulseTab} says.
  */
 @StyleSheet(PulseTaskParts.STYLESHEET)
 public class PulseCenter extends Div {
 
     static final int RECENT_FINISHED = 5;
 
-    private final ValueSignal<Optional<Consumer<PulseTask>>> openHandler = new ValueSignal<>(Optional.empty());
-    private final ValueSignal<Optional<Runnable>> viewAllHandler = new ValueSignal<>(Optional.empty());
+    // The tab this task center is attached to, whose handlers "Open" and "View all" use
+    private final ValueSignal<Optional<PulseTab>> pulseTab = new ValueSignal<>(Optional.empty());
+    private final Signal<Optional<Consumer<PulseTask>>> openHandler =
+            Signal.computed(() -> pulseTab.get().flatMap(tab -> tab.openHandler().get()));
     private final Popover popover = new Popover();
 
-    /** A task center of the current session's Task list. */
+    /**
+     * A task center of the session's Task list. When it attaches, it sets up the
+     * {@link PulseTab} of its browser tab if there is none yet.
+     */
     public PulseCenter() {
-        this(PulseTaskList.getCurrent());
-    }
-
-    public PulseCenter(PulseTaskList taskList) {
+        PulseTaskList taskList = PulseTaskList.getCurrent();
+        Signal<Optional<Runnable>> viewAllHandler =
+                Signal.computed(() -> pulseTab.get().flatMap(tab -> tab.viewAllHandler().get()));
+        addAttachListener(e -> pulseTab.set(Optional.of(PulseTab.of(e.getUI()))));
         addClassName("pulse-center");
         Signal<Integer> runningCount = taskList.runningCount();
         Button button = new Button(runningCount.map(PulseCenter::buttonText));
@@ -72,27 +79,15 @@ public class PulseCenter extends Div {
         viewAll.bindVisible(viewAllHandler.map(Optional::isPresent));
         Div header = new Div(new H3("Background tasks"), viewAll);
         header.addClassName("pulse-center-header");
+        PulseNotificationButton notifications = new PulseNotificationButton();
+        notifications.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        Div footer = new Div(notifications);
+        footer.addClassName("pulse-center-footer");
 
-        popover.add(header, rows, empty);
+        popover.add(header, rows, empty, footer);
         popover.addClassName("pulse-center-popover");
         popover.setPosition(PopoverPosition.BOTTOM_END);
         popover.setTarget(button);
-    }
-
-    /**
-     * What "Open" on a Task does, for example navigating to a page with its
-     * details. Without a handler, the task center shows no "Open" button.
-     */
-    public void setOpenHandler(Consumer<PulseTask> handler) {
-        openHandler.set(Optional.ofNullable(handler));
-    }
-
-    /**
-     * What "View all" does, for example navigating to a page with all Tasks.
-     * Without a handler, the task center shows no "View all" button.
-     */
-    public void setViewAllHandler(Runnable handler) {
-        viewAllHandler.set(Optional.ofNullable(handler));
     }
 
     /** For example "2 running", or "Tasks" when nothing is Running. */

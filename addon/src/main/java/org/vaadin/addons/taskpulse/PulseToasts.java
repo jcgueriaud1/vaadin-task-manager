@@ -20,7 +20,7 @@ import com.vaadin.flow.component.page.PageVisibility;
 import com.vaadin.flow.signals.Signal;
 import org.vaadin.addons.taskpulse.PulseTask.Outcome;
 
-/** Shows a toast in a tab when a Task of the session finishes. {@link PulseWatcher} sets them up. */
+/** Shows a toast in a tab when a Task of the session finishes. {@link PulseTab} sets them up. */
 final class PulseToasts {
 
     private PulseToasts() {
@@ -32,8 +32,12 @@ final class PulseToasts {
      * without one.
      */
     static void showIn(Component owner, PulseTaskList taskList, Signal<Optional<Consumer<PulseTask>>> openHandler) {
-        // The effect runs again on every change to the list, so the tab remembers what it has shown
+        // The effect runs again on every change to the list, so the tab remembers what it has shown.
+        // A Task that finished before the tab opened gets no toast.
         Set<PulseTask> handled = new HashSet<>();
+        taskList.tasks().peekValues()
+                .filter(task -> task.outcome().peek().isPresent())
+                .forEach(handled::add);
         Signal.effect(owner, () -> taskList.tasks().getValues()
                 .forEach(task -> {
                     Optional<Outcome> outcome = task.outcome().get();
@@ -108,7 +112,7 @@ final class PulseToasts {
             toast.close();
         });
         open.addThemeVariants(ButtonVariant.TERTIARY);
-        open.setVisible(openHandler.peek().isPresent());
+        open.bindVisible(openHandler.map(Optional::isPresent));
         return open;
     }
 

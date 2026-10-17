@@ -210,6 +210,8 @@ class CompletionToastTest extends SpringBrowserlessTest {
         tab.getInternals().setSession(VaadinSession.getCurrent());
         // The browser reports visibility when the tab loads, before any view is shown
         setVisibility(tab, visibility);
+        // Vaadin builds a tab's components while that tab's UI is current
+        UI.setCurrent(tab);
         tab.add(new MainLayout(context.getBean(PulseTaskList.class)));
         UI.setCurrent(current);
         return tab;

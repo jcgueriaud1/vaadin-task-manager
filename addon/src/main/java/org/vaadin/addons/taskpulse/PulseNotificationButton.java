@@ -10,14 +10,16 @@ import com.vaadin.flow.signals.Signal;
 /**
  * Asks the browser for permission to show native notifications, only when
  * clicked, and shows the current permission: not asked, granted or denied.
- * {@link PulseWatcher} shows a native notification for each Task that finishes
- * while no tab of the session is visible, once the user granted it.
+ * {@link PulseTab} shows a native notification for each Task that finishes
+ * while no tab of the session is visible, once the user granted it. The task
+ * center has one in its popover; use this one in apps without a task center.
  */
 @StyleSheet(PulseTaskParts.STYLESHEET)
 public class PulseNotificationButton extends Button {
 
     private boolean effectAdded;
 
+    /** When it attaches, it sets up the {@link PulseTab} of its browser tab if there is none yet. */
     public PulseNotificationButton() {
         setAriaLabel("Notification permission");
         addClassName("pulse-notification-button");
@@ -33,6 +35,7 @@ public class PulseNotificationButton extends Button {
         if (!effectAdded) {
             effectAdded = true;
             UI ui = attachEvent.getUI();
+            PulseTab.of(ui);
             // Asks again whenever the tab is shown: another tab may have changed it
             Signal.effect(this, () -> {
                 if (ui.getPage().pageVisibilitySignal().get() != PageVisibility.HIDDEN) {

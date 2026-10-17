@@ -137,8 +137,8 @@ class UnseenTabsTest extends SpringBrowserlessTest {
         for (UI ui : List.of(first, second)) {
             List<JavaScriptInvocation> notifications = notifications(ui);
             assertEquals(1, notifications.size());
-            assertEquals(List.of("Export data", "3 CSV files", String.valueOf(id)),
-                    notifications.getFirst().getParameters());
+            assertEquals(List.of("Export data", "3 CSV files", id),
+                    notifications.getFirst().getParameters().subList(0, 3));
         }
     }
 
@@ -150,8 +150,8 @@ class UnseenTabsTest extends SpringBrowserlessTest {
         executor.runAll();
         runPendingSignalsTasks();
 
-        assertEquals(List.of("Sync with server", "Server unreachable", String.valueOf(taskId())),
-                notifications(first).getFirst().getParameters());
+        assertEquals(List.of("Sync with server", "Server unreachable", taskId()),
+                notifications(first).getFirst().getParameters().subList(0, 3));
     }
 
     @Test

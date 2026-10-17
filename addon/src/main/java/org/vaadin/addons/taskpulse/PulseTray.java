@@ -17,20 +17,17 @@ import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 
 /**
- * The floating tray in the bottom-right that lists the session's Tasks. Add it
- * to the app's main layout, so it is in every view.
+ * The floating tray in the bottom-right that lists the session's Tasks. Every
+ * {@link PulseTab} shows one; turn it off with {@link PulseTab#setTrayEnabled(boolean)}.
  */
 @StyleSheet(PulseTaskParts.STYLESHEET)
 public class PulseTray extends Div {
 
-    private final ValueSignal<Optional<Consumer<PulseTask>>> openHandler = new ValueSignal<>(Optional.empty());
+    private final Signal<Optional<Consumer<PulseTask>>> openHandler;
 
-    /** A tray of the current session's Task list. */
-    public PulseTray() {
-        this(PulseTaskList.getCurrent());
-    }
-
-    public PulseTray(PulseTaskList taskList) {
+    PulseTray(PulseTab pulseTab) {
+        PulseTaskList taskList = pulseTab.taskList();
+        this.openHandler = pulseTab.openHandler();
         addClassName("pulse-tray");
         getElement().setAttribute("role", "region");
         getElement().setAttribute("aria-label", "Background tasks");
@@ -62,14 +59,6 @@ public class PulseTray extends Div {
         rows.bindVisible(Signal.not(collapsed));
         add(header, overallProgress(taskList.overallProgress()), rows);
         bindVisible(taskList.trayTasks().map(tasks -> !tasks.isEmpty()));
-    }
-
-    /**
-     * What "Open" on a Finished Task does, for example navigating to a page with
-     * its details. Without a handler, the tray shows no "Open" button.
-     */
-    public void setOpenHandler(Consumer<PulseTask> handler) {
-        openHandler.set(Optional.ofNullable(handler));
     }
 
     /** The average Progress of Running Tasks that report Progress, hidden when there are none. */

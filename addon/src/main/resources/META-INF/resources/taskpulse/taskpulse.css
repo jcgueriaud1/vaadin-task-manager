@@ -214,6 +214,17 @@ html {
   border-top: 1px solid var(--vaadin-border-color-secondary);
 }
 
+.pulse-center-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem;
+  border-top: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.pulse-center-footer:not(:has(vaadin-button:not([hidden]))) {
+  display: none;
+}
+
 .pulse-center-empty {
   display: block;
   padding: 1rem;

@@ -24,16 +24,6 @@
   margin-inline: auto 1rem;
 }
 
-.pulse-notification-button {
-  margin: 0;
-}
-
-@media (max-width: 40rem) {
-  .pulse-notification-button {
-    display: none;
-  }
-}
-
 /* Actions page */
 
 .actions-view {

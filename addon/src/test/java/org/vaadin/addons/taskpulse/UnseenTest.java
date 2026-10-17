@@ -29,6 +29,16 @@ class UnseenTest {
     }
 
     @Test
+    void withoutAnyTabNothingIsUnseen() {
+        PulseTask task = taskList.start(report, executor, ctx -> {});
+
+        executor.runAll();
+
+        assertFalse(task.unseen().peek());
+        assertEquals(0, taskList.unseenCount().peek());
+    }
+
+    @Test
     void everyUnseenTaskIsSeenAsSoonAsAnyTabIsVisible() {
         PulseTaskList.Tab first = taskList.openTab();
         PulseTaskList.Tab second = taskList.openTab();

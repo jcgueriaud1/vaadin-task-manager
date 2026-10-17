@@ -31,14 +31,17 @@ class SecondTabTest extends SpringBrowserlessTest {
     @Autowired
     private ApplicationContext context;
 
+    private UI second;
     private MainLayout secondTab;
 
     @BeforeEach
     void openTwoTabs() {
         navigate(TestActionsView.class);
         UI first = UI.getCurrent();
-        UI second = new UI();
+        second = new UI();
         second.getInternals().setSession(VaadinSession.getCurrent());
+        // Vaadin builds a tab's components while that tab's UI is current
+        UI.setCurrent(second);
         secondTab = new MainLayout(context.getBean(PulseTaskList.class));
         second.add(secondTab);
         UI.setCurrent(first);
@@ -66,7 +69,8 @@ class SecondTabTest extends SpringBrowserlessTest {
     }
 
     private boolean secondTrayShown() {
-        return $(PulseTray.class).from(secondTab).exists();
+        // The tray belongs to the tab's UI, not to its layout
+        return $(PulseTray.class).from(second).exists();
     }
 
     private Button startButton(String actionName) {

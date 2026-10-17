@@ -1,7 +1,5 @@
 package org.vaadin.addons.taskpulse.demo.ui;
 
-import java.util.function.Consumer;
-
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -18,23 +16,20 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.RouteParameters;
 import org.vaadin.addons.taskpulse.PulseCenter;
-import org.vaadin.addons.taskpulse.PulseNotificationButton;
-import org.vaadin.addons.taskpulse.PulseTask;
+import org.vaadin.addons.taskpulse.PulseTab;
 import org.vaadin.addons.taskpulse.PulseTaskList;
-import org.vaadin.addons.taskpulse.PulseTray;
-import org.vaadin.addons.taskpulse.PulseWatcher;
 
 /**
- * The app shell: a drawer with the app's pages, a navbar with the view title,
- * the notification button and the task center, and the Task tray, present in
- * every view. Its {@link PulseWatcher} does the rest for each tab: the Unseen
- * count and the overall Progress in the page title, native notifications and
- * completion toasts. Every "Open" leads to the Task on the Background tasks page.
+ * The app shell: a drawer with the app's pages and a navbar with the view title
+ * and the task center. The task center sets up the tab's {@link PulseTab}, which
+ * adds the tray, the toasts, native notifications and the Progress in the page
+ * title. Every "Open" leads to the Task on the Background tasks page.
  */
 public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     private final H1 title = new H1();
 
+    /** Takes the session's Task list so that the app's bean, with its clock, is the one installed. */
     public MainLayout(PulseTaskList taskList) {
         Span appName = new Span("TaskPulse");
         appName.addClassName("app-name");
@@ -43,19 +38,14 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
                 new SideNavItem("Background tasks", TasksView.class, VaadinIcon.TASKS.create()));
         addToDrawer(appName, nav);
 
-        Consumer<PulseTask> openDetails = task -> UI.getCurrent().navigate(TasksView.class,
-                new RouteParameters(TasksView.TASK_ID, String.valueOf(task.id())));
         title.addClassName("view-title");
-        PulseCenter taskCenter = new PulseCenter(taskList);
-        taskCenter.setOpenHandler(openDetails);
-        taskCenter.setViewAllHandler(() -> UI.getCurrent().navigate(TasksView.class));
-        Div navbarEnd = new Div(new PulseNotificationButton(), taskCenter);
+        Div navbarEnd = new Div(new PulseCenter());
         navbarEnd.addClassName("navbar-end");
         addToNavbar(new DrawerToggle(), title, navbarEnd);
-        PulseTray tray = new PulseTray(taskList);
-        tray.setOpenHandler(openDetails);
-        getElement().appendChild(tray.getElement());
-        PulseWatcher.watch(this, taskList).setOpenHandler(openDetails);
+        PulseTab.current()
+                .setOpenHandler(task -> UI.getCurrent().navigate(TasksView.class,
+                        new RouteParameters(TasksView.TASK_ID, String.valueOf(task.id()))))
+                .setViewAllHandler(() -> UI.getCurrent().navigate(TasksView.class));
     }
 
     @Override

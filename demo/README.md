@@ -8,8 +8,8 @@ https://vaadin-task-manager-lljh.onrender.com.
 - **Background tasks page** (`/tasks`): Tasks filtered by Task state, with a detail pane for the selected Task
   (its URL is `/tasks/{id}`). From there users can Retry a Failed or Cancelled Task, or clear the Task history.
   Every "Open" in the tray, the task center and the toasts leads here.
-- `MainLayout` adds the add-on's tray, task center, notification button and watcher, as the add-on's README
-  shows.
+- `MainLayout` places the add-on's task center and sets the tab's open and view-all handlers, as the
+  add-on's README shows.
 
 ## Running it
 

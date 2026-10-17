@@ -16,20 +16,20 @@ The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
 - **Tasks you start from your own code**: an **Action** is a name and a blocking mode. You start a **Task** of
   it with its work and the executor to run it on, and the work reports its **Status text**, **Progress** and
   **Result summary** as it goes. An Action has at most one Running Task per session.
-- **Tray** (`PulseTray`): a card in the bottom-right of every view with the session's Tasks, a progress ring
-  each and their overall Progress. Users can cancel a Running Task, dismiss a **Finished Task** or open it.
 - **Task center** (`PulseCenter`): a navbar button that says how many Tasks are Running, with a ring for their
   overall Progress and a badge for **Unseen** Tasks. It opens a popover with the Running and recent Finished
-  Tasks.
+  Tasks, and the button that turns on native notifications.
+- **Tray** (`PulseTray`): a card in the bottom-right of every view with the session's Tasks, a progress ring
+  each and their overall Progress. Users can cancel a Running Task, dismiss a **Finished Task** or open it.
 - **Blocking Tasks** (`PulseBlockingDialog`): a **Blocking Task** covers the tab that started it with a dialog
   until it finishes or the user cancels it. Other tabs of the session stay usable.
-- **Tab-level behaviour** (`PulseWatcher`):
-  - every tab's title starts with the overall Progress, for example `45% · Orders`;
-  - a Task that finishes while no tab is visible is Unseen, and the title counts those too, as in
+- **One `PulseTab` per browser tab**, set up by the task center, that
+  - adds the tray;
+  - starts the tab's title with the overall Progress, for example `45% · Orders`;
+  - marks a Task that finishes while no tab is visible as Unseen, and counts those in the title too, as in
     `(2) 45% · Orders`;
-  - every visible tab shows a toast when a Task succeeds or fails;
-  - if the user allowed it with a `PulseNotificationButton`, the browser shows a native notification for each
-    Unseen Task.
+  - shows a toast in every visible tab when a Task succeeds or fails, and a native notification for each Unseen
+    Task once the user allowed them.
 
 All browser tabs of one session share the same **Task list**. It is kept in memory with local signals; see
 [ADR 0001](docs/adr/0001-session-task-list-uses-local-signals.md).
@@ -54,33 +54,37 @@ public class Application implements AppShellConfigurator {
 
 ## Quick start
 
-Add the tray, the task center and the watcher to your main layout once. The "Open" buttons do nothing by
-themselves: give them an open handler, for example one that navigates to your own page of Task details. Without
-one, they are hidden.
+Put the task center in your main layout's navbar. It sets up the tab's `PulseTab`, which adds the tray, the
+toasts, native notifications and the progress in the page title:
 
 ```java
 public class MainLayout extends AppLayout {
 
     public MainLayout() {
-        Consumer<PulseTask> openDetails = task -> UI.getCurrent().navigate(TaskView.class,
-                new RouteParameters("taskId", String.valueOf(task.id())));
-
-        PulseCenter taskCenter = new PulseCenter();
-        taskCenter.setOpenHandler(openDetails);
-        taskCenter.setViewAllHandler(() -> UI.getCurrent().navigate(TaskView.class));
-        addToNavbar(new DrawerToggle(), new PulseNotificationButton(), taskCenter);
-
-        PulseTray tray = new PulseTray();
-        tray.setOpenHandler(openDetails);
-        getElement().appendChild(tray.getElement());
-
-        PulseWatcher.watch(this).setOpenHandler(openDetails);
+        addToNavbar(new DrawerToggle(), new PulseCenter());
+        PulseTab.current()
+                .setOpenHandler(task -> UI.getCurrent().navigate(TaskView.class,
+                        new RouteParameters("taskId", String.valueOf(task.id()))))
+                .setViewAllHandler(() -> UI.getCurrent().navigate(TaskView.class));
     }
 }
 ```
 
-The components without arguments use `PulseTaskList.getCurrent()`, the Task list of the current
-`VaadinSession`. It is created on first use and kept as a session attribute.
+The open handler is what "Open" does everywhere: in the task center, the tray, the toasts, and a click on a
+native notification. "View all" in the task center runs the view-all handler. Without a handler, its buttons
+are hidden.
+
+`PulseTab` has two more settings:
+
+| Setting                          | Default | What it does                                                       |
+|----------------------------------|---------|--------------------------------------------------------------------|
+| `setTrayEnabled(boolean)`        | on      | the tray in the bottom-right                                       |
+| `setPageTitleUpdates(boolean)`   | on      | the Unseen count and overall Progress at the start of the page title |
+
+There is one `PulseTab` per `UI`, that is per browser tab. The task center and `PulseNotificationButton` set it
+up when they attach. An app without either sets it up by calling `PulseTab.current()`. The tab shows the
+session's Task list, `PulseTaskList.getCurrent()`, which is created on first use and kept as a
+`VaadinSession` attribute.
 
 ## Running work as Tasks
 

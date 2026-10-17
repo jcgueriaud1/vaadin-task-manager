@@ -182,6 +182,8 @@ class BlockingTaskTest extends SpringBrowserlessTest {
         UI current = UI.getCurrent();
         UI tab = new UI();
         tab.getInternals().setSession(VaadinSession.getCurrent());
+        // Vaadin builds a tab's components while that tab's UI is current
+        UI.setCurrent(tab);
         tab.add(new MainLayout(context.getBean(PulseTaskList.class)));
         UI.setCurrent(current);
         return tab;

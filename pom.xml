@@ -9,6 +9,39 @@
     <name>TaskPulse Parent</name>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
+    <description>Run long tasks in the background from a Vaadin UI, follow their progress and get notified when they finish.</description>
+    <url>https://github.com/${github.account}/${github.project}</url>
+
+    <organization>
+        <name>Vaadin Community</name>
+        <url>https://vaadin.com/directory</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>JC Gueriaud</name>
+            <organization>Vaadin Community</organization>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/${github.account}/${github.project}</url>
+        <connection>scm:git:https://github.com/${github.account}/${github.project}.git</connection>
+        <developerConnection>scm:git:https://github.com/${github.account}/${github.project}.git</developerConnection>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/${github.account}/${github.project}/issues</url>
+    </issueManagement>
 
     <modules>
         <module>addon</module>
@@ -21,6 +54,8 @@
         <vaadin.version>25.3.2</vaadin.version>
         <spring-boot.version>4.1.1</spring-boot.version>
         <junit.version>6.0.3</junit.version>
+        <github.account>jcgueriaud1</github.account>
+        <github.project>vaadin-task-manager</github.project>
         <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
     </properties>
 
@@ -115,6 +150,26 @@
                     <version>3.1.4</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.4.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.12.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>3.8.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.8</version>
+                </plugin>
+                <plugin>
                     <groupId>com.vaadin</groupId>
                     <artifactId>vaadin-maven-plugin</artifactId>
                     <version>${vaadin.version}</version>
@@ -131,4 +186,70 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <!--
+          Publishes the parent pom and the add-on to Maven Central, signed, with
+          sources and javadoc. The release workflow runs it on the add-on only:
+          ./mvnw -Prelease -pl addon -am deploy
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Reads the key from MAVEN_GPG_KEY and MAVEN_GPG_PASSPHRASE -->
+                                    <signer>bc</signer>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

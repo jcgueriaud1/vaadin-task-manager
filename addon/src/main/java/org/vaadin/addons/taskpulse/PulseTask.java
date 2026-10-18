@@ -132,7 +132,7 @@ public final class PulseTask {
         });
     }
 
-    /** Whether the user can Retry the Task: it is Failed or Cancelled, and wasn't started with {@link Retry#NEVER}. */
+    /** Whether the user can Retry the Task: it is Failed or Cancelled, and its Action isn't {@link PulseAction.Retry#NEVER}. */
     public Signal<Boolean> retryable() {
         return state.map(s -> retry != null && (s == State.FAILED || s == State.CANCELLED));
     }
@@ -293,11 +293,4 @@ public final class PulseTask {
         }
     }
 
-    /** Whether a Task can be Retried once it is Failed or Cancelled. */
-    public enum Retry {
-        /** Retry starts a new Task with the same work on the same executor. */
-        ALLOWED,
-        /** For work that must not run twice, such as a payment: the Task can't be Retried. */
-        NEVER
-    }
 }

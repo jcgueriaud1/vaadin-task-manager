@@ -25,7 +25,6 @@ import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
-import org.vaadin.addons.taskpulse.PulseBlockingDialog;
 import org.vaadin.addons.taskpulse.PulseTask;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 import org.vaadin.addons.taskpulse.PulseTaskParts;
@@ -144,7 +143,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         Button cancel = new Button("Cancel", e -> task.cancel());
         cancel.addThemeVariants(ButtonVariant.ERROR);
         cancel.bindVisible(task.running());
-        Button retry = new Button("Retry", e -> PulseBlockingDialog.openIfBlocking(taskList.retry(task)));
+        Button retry = new Button("Retry", e -> taskList.retry(task));
         retry.addThemeVariants(ButtonVariant.PRIMARY);
         retry.bindVisible(task.retryable());
         retry.bindEnabled(Signal.not(taskList.isRunning(task.action())));

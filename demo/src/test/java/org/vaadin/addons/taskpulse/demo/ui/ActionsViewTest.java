@@ -13,6 +13,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 
 import com.vaadin.browserless.SpringBrowserlessTest;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import org.vaadin.addons.taskpulse.PulseAction;
@@ -116,8 +117,12 @@ class ActionsViewTest extends SpringBrowserlessTest {
     @Test
     void aClickThatLosesTheRaceWithAnotherTabIsDroppedAsTheButtonIsAlreadyLocked() {
         Button importData = startButton("Import data");
-        // Another tab starts it while this tab's click is on its way to the server
+        // Another tab starts it while this tab's click is on its way to the server: this tab isn't current then
+        UI thisTab = UI.getCurrent();
+        UI.setCurrent(null);
         context.getBean(PulseTaskList.class).start(new PulseAction("Import data", BlockingMode.BLOCKING), executor, ctx -> {});
+        UI.setCurrent(thisTab);
+        runPendingSignalsTasks();
 
         assertFalse(importData.isEnabled());
         importData.click();

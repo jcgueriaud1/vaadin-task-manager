@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
 import org.vaadin.addons.taskpulse.PulseTask.Outcome;
-import org.vaadin.addons.taskpulse.PulseTask.Retry;
+import org.vaadin.addons.taskpulse.PulseAction.Retry;
 
 /** What a Task says about itself, so that no view has to work it out from its Task state. */
 class TaskMeaningTest {
@@ -100,10 +100,11 @@ class TaskMeaningTest {
     }
 
     @Test
-    void aTaskStartedAsNeverRetryableIsNotRetryableAndTheTaskListAgrees() {
-        PulseTask failed = taskList.start(report, Runnable::run, ctx -> {
+    void aTaskOfANeverRetriedActionIsNotRetryableAndTheTaskListAgrees() {
+        PulseAction charge = new PulseAction("Charge card", BlockingMode.NON_BLOCKING, Retry.NEVER);
+        PulseTask failed = taskList.start(charge, Runnable::run, ctx -> {
             throw new IllegalStateException("Card declined");
-        }, Retry.NEVER);
+        });
 
         assertFalse(failed.retryable().peek());
         assertThrows(IllegalStateException.class, () -> taskList.retry(failed));

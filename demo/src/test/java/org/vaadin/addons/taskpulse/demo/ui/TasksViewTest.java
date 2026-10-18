@@ -32,7 +32,7 @@ import com.vaadin.flow.server.VaadinSession;
 import org.vaadin.addons.taskpulse.PulseAction;
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
 import org.vaadin.addons.taskpulse.PulseTask;
-import org.vaadin.addons.taskpulse.PulseTask.Retry;
+import org.vaadin.addons.taskpulse.PulseAction.Retry;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 import org.vaadin.addons.taskpulse.TestClock;
 import org.vaadin.addons.taskpulse.TestExecutor;
@@ -213,9 +213,9 @@ class TasksViewTest extends SpringBrowserlessTest {
     }
 
     @Test
-    void aTaskStartedAsNeverRetryableHasNoRetry() {
-        PulseTask task = taskList().start(new PulseAction("Rebuild index", BlockingMode.NON_BLOCKING), executor,
-                ctx -> ctx.setStatusText("Reading documents"), Retry.NEVER);
+    void aTaskOfANeverRetriedActionHasNoRetry() {
+        PulseTask task = taskList().start(new PulseAction("Rebuild index", BlockingMode.NON_BLOCKING, Retry.NEVER),
+                executor, ctx -> ctx.setStatusText("Reading documents"));
         task.cancel();
         executor.runAll();
         navigate(TasksView.class);

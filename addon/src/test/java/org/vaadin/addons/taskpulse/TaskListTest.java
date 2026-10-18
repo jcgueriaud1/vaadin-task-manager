@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
 import org.vaadin.addons.taskpulse.PulseTask.Outcome;
-import org.vaadin.addons.taskpulse.PulseTask.Retry;
+import org.vaadin.addons.taskpulse.PulseAction.Retry;
 
 class TaskListTest {
 
@@ -86,10 +86,11 @@ class TaskListTest {
     }
 
     @Test
-    void aTaskStartedAsNeverRetryableCannotBeRetried() {
-        PulseTask failed = taskList.start(sync, executor, ctx -> {
-            throw new IllegalStateException("Server unreachable");
-        }, Retry.NEVER);
+    void aTaskOfANeverRetriedActionCannotBeRetried() {
+        PulseAction charge = new PulseAction("Charge card", BlockingMode.NON_BLOCKING, Retry.NEVER);
+        PulseTask failed = taskList.start(charge, executor, ctx -> {
+            throw new IllegalStateException("Card declined");
+        });
         executor.runAll();
 
         assertFalse(failed.retryable().peek());

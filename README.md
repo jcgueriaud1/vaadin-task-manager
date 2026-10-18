@@ -14,15 +14,15 @@ after a quiet spell can take about a minute while it wakes up.
 The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
 
 - **Tasks you start from your own code**: an **Action** is a name and a blocking mode. You start a **Task** of
-  it with its work and the executor to run it on, and the work reports its **Status text**, **Progress** and
-  **Result summary** as it goes. An Action has at most one Running Task per session.
+  it with its work, which runs on a virtual thread or on the executor you choose, and the work reports its
+  **Status text**, **Progress** and **Result summary** as it goes. An Action has at most one Running Task per session.
 - **Task center** (`PulseCenter`): a navbar button that says how many Tasks are Running, with a ring for their
   overall Progress and a badge for **Unseen** Tasks. It opens a popover with the Running and recent Finished
   Tasks, and the button that turns on native notifications.
 - **Tray** (`PulseTray`): a card in the bottom-right of every view with the session's Tasks, a progress ring
   each and their overall Progress. Users can cancel a Running Task, dismiss a **Finished Task** or open it.
-- **Blocking Tasks** (`PulseBlockingDialog`): a **Blocking Task** covers the tab that started it with a dialog
-  until it finishes or the user cancels it. Other tabs of the session stay usable.
+- **Blocking Tasks**: a **Blocking Task** covers the tab that started it with a dialog until it finishes or the
+  user cancels it, and so does its **Retry**. Other tabs of the session stay usable.
 - **One `PulseTab` per browser tab**, set up by the task center, that
   - adds the tray;
   - starts the tab's title with the overall Progress, for example `45% · Orders`;
@@ -88,8 +88,8 @@ session's Task list, `PulseTaskList.getCurrent()`, which is created on first use
 
 ## Running work as Tasks
 
-An Action holds no work. You start a Task of it with the work and the executor to run it on, so you choose the
-thread, and the work reports through the Task. The tray, the task center and the blocking dialog follow the
+An Action holds no work. You start a Task of it with the work, which runs on the Task list's executor unless
+you pass another, and the work reports through the Task. The tray, the task center and the blocking dialog follow the
 Task's signals. [ADR 0002](docs/adr/0002-application-runs-the-work-of-tasks.md) explains why it works this
 way.
 
@@ -101,8 +101,14 @@ An Action is a name and a `BlockingMode`, nothing more:
 static final PulseAction IMPORT_DATA = new PulseAction("Import data", BlockingMode.BLOCKING);
 ```
 
-Two Actions with the same name and mode are the same Action. The Task list allows at most one Running Task
-of it per session.
+For work that must not run twice, such as a payment, mark the Action `Retry.NEVER`: its Tasks can't be retried.
+
+```java
+static final PulseAction CHARGE_CARD = new PulseAction("Charge card", BlockingMode.BLOCKING, Retry.NEVER);
+```
+
+Two Actions with the same name, mode and retry setting are the same Action. The Task list allows at most one
+Running Task of it per session.
 
 ### 2. Write the work
 
@@ -129,40 +135,38 @@ static void importData(PulseTaskContext ctx) {
 
 ### 3. Start a Task
 
-`taskList.start(action, executor, work)` adds a Running Task, hands the work to the executor, and returns the
-Task. The executor decides where the work runs:
-
-| Executor                                | The work runs                                              |
-|-----------------------------------------|------------------------------------------------------------|
-| `Executors.newVirtualThreadPerTaskExecutor()` | on a virtual thread of its own                       |
-| Spring's `TaskExecutor`, e.g. the `@Async` pool | on that pool's threads                             |
-| `Runnable::run`                         | on the calling thread, before `start` returns: a scheduled job or a queue consumer that already has its own thread |
+`taskList.start(action, work)` adds a Running Task, runs the work on the Task list's executor, and returns the
+Task. By default, each Task's work runs on a virtual thread of its own.
 
 ```java
-PulseTask task = PulseTaskList.getCurrent().start(IMPORT_DATA, executor, Imports::importData);
+PulseTask task = PulseTaskList.getCurrent().start(IMPORT_DATA, Imports::importData);
 ```
+
+Started from a browser tab, a Task of a Blocking Action covers that tab with a dialog until it finishes or the
+user cancels it. Started with no current UI, for example from a scheduled job, it blocks nothing.
+
+To run the work elsewhere, pass an executor, either to the start or once to the Task list:
+
+| Where                                      | How                                                         |
+|--------------------------------------------|-------------------------------------------------------------|
+| one start, e.g. Spring's `@Async` pool     | `taskList.start(action, executor, work)`                    |
+| on the calling thread, before `start` returns: a scheduled job or a queue consumer with its own thread | `taskList.start(action, Runnable::run, work)` |
+| every start of the session's Task list     | `PulseTaskList.install(session, new PulseTaskList(clock, executor))`, see [With Spring](#with-spring) |
 
 The Task always ends. It ends Succeeded when the work returns, Cancelled when the user cancelled it (even before
 the work started, in which case the work never runs), and Failed when the work throws or the executor refuses
-it. `taskList.retry(task)` starts the same work on the same executor. For work that must not run twice, such as
-a payment, start it with `Retry.NEVER` and it can't be retried:
-
-```java
-taskList.start(CHARGE_CARD, executor, payments::charge, Retry.NEVER);
-```
+it. `taskList.retry(task)` starts the same work on the same executor.
 
 The work reports only through its `PulseTaskContext`. It must not hold on to a view or its components: a Retry,
 perhaps from another tab after this one closed, runs the same work again. Static methods are a good fit.
 
 ### 4. Start it from a view
 
-Use a regular `Button`. Bind it to `taskList.isRunning(action)` so the Action never runs twice, and open a
-`PulseBlockingDialog` if the Action is Blocking:
+Use a regular `Button`. Bind it to `taskList.isRunning(action)` so the Action never runs twice:
 
 ```java
 PulseTaskList taskList = PulseTaskList.getCurrent();
-Button button = new Button("Start", e -> PulseBlockingDialog.openIfBlocking(
-        taskList.start(IMPORT_DATA, executor, Imports::importData)));
+Button button = new Button("Start", e -> taskList.start(IMPORT_DATA, Imports::importData));
 Signal<Boolean> running = taskList.isRunning(IMPORT_DATA);
 button.bindText(running.map(r -> r ? "Import data running…" : "Start"));
 button.bindEnabled(Signal.not(running));
@@ -192,14 +196,14 @@ Background tasks page is built that way.
 
 ## With Spring
 
-The add-on needs no Spring configuration. To inject the Task list, or to give it another clock, install it in
-the session from a session-scoped bean:
+The add-on needs no Spring configuration. To inject the Task list, or to give it another clock or executor,
+install it in the session from a session-scoped bean:
 
 ```java
 @Bean
 @VaadinSessionScope
-public PulseTaskList taskList(Clock clock) {
-    return PulseTaskList.install(VaadinSession.getCurrent(), new PulseTaskList(clock));
+public PulseTaskList taskList(Clock clock, Executor taskExecutor) {
+    return PulseTaskList.install(VaadinSession.getCurrent(), new PulseTaskList(clock, taskExecutor));
 }
 ```
 

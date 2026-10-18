@@ -8,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
@@ -273,5 +275,17 @@ class TaskRunTest {
     @SuppressWarnings("unchecked")
     private static <E extends Throwable> void sneakyThrow(Throwable e) throws E {
         throw (E) e;
+    }
+
+    @Test
+    void withoutAnExecutorTheWorkRunsOnAVirtualThread() throws Exception {
+        CompletableFuture<Thread> ranOn = new CompletableFuture<>();
+        PulseTask task = new PulseTaskList().start(newsletter, ctx -> ranOn.complete(Thread.currentThread()));
+
+        assertTrue(ranOn.get(5, TimeUnit.SECONDS).isVirtual());
+        while (task.running().peek()) {
+            Thread.onSpinWait();
+        }
+        assertEquals(PulseTask.State.SUCCEEDED, task.state().peek());
     }
 }

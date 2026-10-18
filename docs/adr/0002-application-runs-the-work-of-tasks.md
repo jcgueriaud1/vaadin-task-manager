@@ -15,3 +15,7 @@ Starting a Task had become a recipe every caller wrote by hand: `start(action, r
 
 - Every Task can be Retried, unless it was started with `Retry.NEVER`, for work that must not run twice. This replaces the first consequence above.
 - A Task always ends: an `Error` makes it Failed, and so does an executor that refuses the work. A Task cancelled before its work starts ends Cancelled without running it. This replaces the last consequence above.
+
+## Amended 2026-10-17: the Task list has an executor, and Blocking is kept by the start
+
+Every view had to inject an executor and wrap each start and Retry in `openIfBlocking`; a view that forgot the wrap started a Blocking Task that didn't block. Now the Task list has an executor of its own, a virtual thread per Task unless it was created with another, and `start(action, work)` uses it. `start(action, executor, work)` still runs one start elsewhere, so the application still chooses where work runs. A start or a Retry from a browser tab opens the Blocking Task dialog itself; with no current UI it blocks nothing. "Never retried" moved from a start argument to the Action, since it is a property of the work: `new PulseAction(name, mode, Retry.NEVER)`.

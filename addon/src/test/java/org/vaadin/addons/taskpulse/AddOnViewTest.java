@@ -147,6 +147,38 @@ class AddOnViewTest extends BrowserlessTest {
         assertFalse(task.unseen().peek(), "no tab is tracked, so nobody missed it");
     }
 
+    @Test
+    void aBlockingTaskStartedFromATabCoversItAndSoDoesItsRetry() {
+        navigate(CenterView.class);
+        PulseAction restore = new PulseAction("Restore backup", BlockingMode.BLOCKING);
+        TestExecutor executor = new TestExecutor();
+        PulseTask task = PulseTab.current().taskList().start(restore, executor, ctx -> {
+            executor.pause();
+            throw new IllegalStateException("Backup is corrupt");
+        });
+        assertTrue($(PulseBlockingDialog.class).exists());
+
+        executor.runAll();
+        runPendingSignalsTasks();
+        assertFalse($(PulseBlockingDialog.class).exists());
+
+        PulseTab.current().taskList().retry(task);
+        assertTrue($(PulseBlockingDialog.class).exists(), "the Retry covers the tab it came from");
+        executor.runAll();
+    }
+
+    @Test
+    void aBlockingTaskStartedWithoutATabBlocksNothing() {
+        navigate(CenterView.class);
+        PulseTaskList taskList = PulseTab.current().taskList();
+        UI tab = UI.getCurrent();
+        UI.setCurrent(null);
+        taskList.start(new PulseAction("Restore backup", BlockingMode.BLOCKING), new TestExecutor(), ctx -> {});
+        UI.setCurrent(tab);
+
+        assertFalse($(PulseBlockingDialog.class).exists());
+    }
+
     private Popover openPopover() {
         PopoverTester tester = PopoverTester.forTarget($(Button.class).withAriaLabel("Task center").single());
         if (!tester.isOpen()) {

@@ -1,7 +1,6 @@
 package org.vaadin.addons.taskpulse.demo.ui;
 
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
@@ -20,7 +19,6 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.signals.Signal;
 import org.vaadin.addons.taskpulse.PulseAction;
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
-import org.vaadin.addons.taskpulse.PulseBlockingDialog;
 import org.vaadin.addons.taskpulse.PulseTaskContext;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 
@@ -95,12 +93,10 @@ public class ActionsView extends Div {
     }
 
     private final PulseTaskList taskList;
-    private final Executor executor;
 
     @Autowired
-    public ActionsView(PulseTaskList taskList, Executor executor) {
+    public ActionsView(PulseTaskList taskList) {
         this.taskList = taskList;
-        this.executor = executor;
         addClassName("actions-view");
         add(intro());
         // The code shown on each card mirrors the constants and methods above; keep them in sync
@@ -201,9 +197,8 @@ public class ActionsView extends Div {
     }
 
     /** Shows the given Actions instead of the demo ones, without explanations. For tests. */
-    ActionsView(PulseTaskList taskList, Executor executor, List<Demo> demos) {
+    ActionsView(PulseTaskList taskList, List<Demo> demos) {
         this.taskList = taskList;
-        this.executor = executor;
         addClassName("actions-view");
         demos.forEach(demo -> add(card(demo, "", "", "")));
     }
@@ -213,8 +208,7 @@ public class ActionsView extends Div {
      * Running Task, in any tab of the session, it says so and is disabled.
      */
     private Button startButton(PulseAction action, Consumer<PulseTaskContext> work) {
-        Button button = new Button("Start",
-                e -> PulseBlockingDialog.openIfBlocking(taskList.start(action, executor, work)));
+        Button button = new Button("Start", e -> taskList.start(action, work));
         Signal<Boolean> running = taskList.isRunning(action);
         button.bindText(running.map(r -> r ? action.name() + " running…" : "Start"));
         button.bindEnabled(Signal.not(running));
@@ -228,7 +222,7 @@ public class ActionsView extends Div {
                 new Paragraph("""
                         Each card below is an Action, a name and a blocking mode, with the work it does. \
                         Its start button is a regular Button: the view starts a Task in the Task list with \
-                        its work and the executor to run it on, here virtual threads. The work reports back \
+                        its work, which runs on the Task list's executor, here virtual threads. The work reports back \
                         through the Task's signals, and the tray, the navbar, the dialog and every open \
                         tab of your session follow along."""),
                 new Paragraph("""
@@ -236,10 +230,9 @@ public class ActionsView extends Div {
                         tab before it finishes. You get a toast when it ends, or a native notification \
                         and a count in the page title if no tab was visible."""),
                 code("Show how the buttons start Tasks", """
-                        // Any Executor will do: virtual threads, Spring's TaskExecutor, Runnable::run…
-                        // Retry starts the same work on the same executor.
-                        Button button = new Button("Start", e -> PulseBlockingDialog.openIfBlocking(
-                                taskList.start(action, executor, work)));
+                        // The work runs on the Task list's executor: here virtual threads.
+                        // A Blocking Action covers this tab until its Task finishes; Retry too.
+                        Button button = new Button("Start", e -> taskList.start(action, work));
                         // Locked while the Action runs, in any tab of the session
                         Signal<Boolean> running = taskList.isRunning(action);
                         button.bindText(running.map(r -> r ? action.name() + " running…" : "Start"));

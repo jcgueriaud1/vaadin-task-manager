@@ -1,6 +1,6 @@
-# Vaadin Task Manager
+# TaskPulse
 
-A demo of running long operations from a Vaadin UI. Users start them, follow their progress and get notified when they finish.
+A Vaadin add-on for running long operations from a Vaadin UI, and its demo. Users start them, follow their progress and get notified when they finish. In code, the add-on's types carry the `Pulse` prefix (`PulseTask` for a Task, `PulseTaskList` for the Task list); the terms below stay as they are.
 
 ## Language
 
@@ -53,7 +53,7 @@ An optional short text a Succeeded Task ends with, describing what it produced. 
 _Avoid_: Result, output
 
 **Retry**:
-Starting a new Task of the same Action, with the same work, from a Failed or Cancelled Task. A Task can be started as never retryable, for work that must not run twice; it can't be retried. The old Task stays as it was. Retrying a Blocking Task blocks the view it was retried from.
+Starting a new Task of the same Action, with the same work, from a Failed or Cancelled Task. An Action can be marked never retried, for work that must not run twice; its Tasks can't be retried. The old Task stays as it was. Retrying a Blocking Task blocks the view it was retried from.
 _Avoid_: Rerun, restart
 
 ### Where Tasks live

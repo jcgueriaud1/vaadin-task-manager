@@ -6,3 +6,7 @@ The Task list is one per user session and every browser tab of that session sees
 
 - The Task list is not serializable and does not survive session replication or a server restart.
 - Moving to Tasks visible to other users would mean switching to `SharedListSignal` with serializable Task snapshots.
+
+## Amended 2026-10-17: the list is a session attribute, not a Spring bean
+
+The Task list now lives in the TaskPulse add-on, which doesn't depend on Spring (ADR 0003). `PulseTaskList.getCurrent()` keeps one per `VaadinSession` as a session attribute, which is what the `@VaadinSessionScope` bean used to give. The demo's Spring bean installs one there, with the demo's clock. The choice of local signals stands.

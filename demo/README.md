@@ -10,6 +10,9 @@ https://vaadin-task-manager-lljh.onrender.com.
   Every "Open" in the tray, the task center and the toasts leads here.
 - `MainLayout` places the add-on's task center and sets the tab's open and view-all handlers, as the
   add-on's README shows.
+- **Theme switcher** (navbar): shows the add-on in Lumo light, Lumo dark, Aura and a custom theme built on
+  Aura (`themes/custom.css`). `ThemeSwitcher` swaps the theme's stylesheet without a reload, and a cookie
+  lets the app shell (`Application.configurePage`) load the same theme on the next visit.
 
 ## Running it
 

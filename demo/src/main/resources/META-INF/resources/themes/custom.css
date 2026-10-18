@@ -1,0 +1,16 @@
+/*
+ * A custom theme built on Aura: Aura's stylesheet, then a few of its properties
+ * changed. Aura sets them with zero specificity, so plain :root wins. It keeps
+ * following the browser's light or dark color scheme.
+ */
+@import "../aura/aura.css";
+
+:root {
+  --aura-accent-color-light: oklch(0.55 0.2 300);
+  --aura-accent-color-dark: oklch(0.75 0.15 300);
+  --aura-background-color-light: oklch(0.97 0.015 320);
+  --aura-background-color-dark: oklch(0.19 0.03 300);
+  --aura-base-radius: 8;
+  --aura-contrast-level: 1.5;
+  --aura-font-family: var(--aura-font-family-system);
+}

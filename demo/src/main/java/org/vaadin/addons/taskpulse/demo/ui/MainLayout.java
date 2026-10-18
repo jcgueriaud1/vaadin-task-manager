@@ -20,10 +20,11 @@ import org.vaadin.addons.taskpulse.PulseTab;
 import org.vaadin.addons.taskpulse.PulseTaskList;
 
 /**
- * The app shell: a drawer with the app's pages and a navbar with the view title
- * and the task center. The task center sets up the tab's {@link PulseTab}, which
- * adds the tray, the toasts, native notifications and the Progress in the page
- * title. Every "Open" leads to the Task on the Background tasks page.
+ * The app shell: a drawer with the app's pages and a navbar with the view title,
+ * the theme switcher and the task center. The task center sets up the tab's
+ * {@link PulseTab}, which adds the tray, the toasts, native notifications and the
+ * Progress in the page title. Every "Open" leads to the Task on the Background
+ * tasks page.
  */
 public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
@@ -39,7 +40,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         addToDrawer(appName, nav);
 
         title.addClassName("view-title");
-        Div navbarEnd = new Div(new PulseCenter());
+        Div navbarEnd = new Div(new ThemeSwitcher(), new PulseCenter());
         navbarEnd.addClassName("navbar-end");
         addToNavbar(new DrawerToggle(), title, navbarEnd);
         PulseTab.current()

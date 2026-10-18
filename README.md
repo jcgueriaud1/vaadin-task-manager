@@ -160,6 +160,26 @@ it. `taskList.retry(task)` starts the same work on the same executor.
 The work reports only through its `PulseTaskContext`. It must not hold on to a view or its components: a Retry,
 perhaps from another tab after this one closed, runs the same work again. Static methods are a good fit.
 
+#### Choosing an executor
+
+Each Task runs only on the executor it was started with, and its state is safe to update from any thread, so
+one app can mix executors. What changes from one to another:
+
+- **Retry uses the same executor.** If that executor has been shut down since, for example during an app
+  shutdown, the retried Task ends Failed with "Couldn't start".
+- **A bounded pool queues work, and a queued Task shows as Running.** It is Running from the start, with a
+  spinning ring, until a thread picks up its work. Cancelling it in the queue ends it Cancelled without running
+  it. The default virtual threads never queue.
+- **`Runnable::run` in a view freezes the tab.** The work runs in the click handler, so the tab gets no update,
+  and no Blocking dialog, until it returns. Use it only for code that already runs on its own thread.
+- **Thread-bound context is not carried over by default.** Spring Security's authentication, transactions and
+  logging context reach the work only if the executor copies them; Spring's executors can be set up to,
+  virtual threads don't. Work that reads the current user can then succeed on one executor and fail on
+  another, so pass the work what it needs rather than reading it from the thread.
+
+Choose the executor by the kind of work, and set it once: for the whole Task list with
+`new PulseTaskList(clock, executor)`, or for one start.
+
 ### 4. Start it from a view
 
 Use a regular `Button`. Bind it to `taskList.isRunning(action)` so the Action never runs twice:

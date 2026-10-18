@@ -35,10 +35,10 @@ final class PulseToasts {
         // The effect runs again on every change to the list, so the tab remembers what it has shown.
         // A Task that finished before the tab opened gets no toast.
         Set<PulseTask> handled = new HashSet<>();
-        taskList.tasks().peekValues()
+        taskList.tasks().peek().stream()
                 .filter(task -> task.outcome().peek().isPresent())
                 .forEach(handled::add);
-        Signal.effect(owner, () -> taskList.tasks().getValues()
+        Signal.effect(owner, () -> taskList.tasks().get().stream()
                 .forEach(task -> {
                     Optional<Outcome> outcome = task.outcome().get();
                     if (outcome.isEmpty() || !handled.add(task)) {

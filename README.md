@@ -155,7 +155,7 @@ To run the work elsewhere, pass an executor, either to the start or once to the 
 
 The Task always ends. It ends Succeeded when the work returns, Cancelled when the user cancelled it (even before
 the work started, in which case the work never runs), and Failed when the work throws or the executor refuses
-it. `taskList.retry(task)` starts the same work on the same executor.
+it. `task.retry()` starts the same work on the same executor.
 
 The work reports only through its `PulseTaskContext`. It must not hold on to a view or its components: a Retry,
 perhaps from another tab after this one closed, runs the same work again. Static methods are a good fit.
@@ -208,9 +208,12 @@ never gets there: Vaadin drops clicks on disabled components.
 
 ## Your own views of Tasks
 
-`PulseTaskList` exposes the session's Tasks as signals: `tasks()`, `runningCount()`, `overallProgress()`,
-`unseenCount()`, `find(id)`, `retry(task)` and `clearFinished()`. Each `PulseTask` has signals for its
-`state()`, `progress()`, `statusText()`, `outcome()` and more. `PulseTaskParts` builds the same pieces the tray
+`PulseTaskList` exposes the session's Tasks as read-only signals: `tasks()` (oldest first), `runningCount()`,
+`overallProgress()` and `unseenCount()`, plus `find(id)` and `clearFinished()`. It keeps at most 50 Tasks: when
+it is full, a start removes the oldest Finished Task, and throws if all 50 are Running.
+
+Each `PulseTask` has signals for its `state()`, `progress()`, `statusText()`, `outcome()`, `retryable()` and
+more, and the user's actions on it: `cancel()`, `retry()` and `dismiss()`. `PulseTaskParts` builds the same pieces the tray
 uses, such as a Task's indicator, its meta line or its progress bar, for a page of your own. The demo's
 Background tasks page is built that way.
 

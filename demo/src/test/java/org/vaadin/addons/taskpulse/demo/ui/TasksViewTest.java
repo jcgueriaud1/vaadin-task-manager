@@ -172,7 +172,7 @@ class TasksViewTest extends SpringBrowserlessTest {
 
         select("Generate report");
 
-        PulseTask task = taskList().tasks().peekValues().findFirst().orElseThrow();
+        PulseTask task = taskList().tasks().peek().stream().findFirst().orElseThrow();
         assertEquals("tasks/" + task.id(), UI.getCurrent().getActiveViewLocation().getPath());
     }
 
@@ -182,7 +182,7 @@ class TasksViewTest extends SpringBrowserlessTest {
         executor.runAll();
         start("Sync with server");
         executor.runAll();
-        PulseTask failed = taskList().tasks().peekValues().toList().get(1);
+        PulseTask failed = taskList().tasks().peek().stream().toList().get(1);
 
         navigate("tasks/" + failed.id(), TasksView.class);
         runPendingSignalsTasks();

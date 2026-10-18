@@ -30,7 +30,7 @@ class TaskRunTest {
     void startedTaskIsRunningUntilItsWorkReturnsThenSucceeded() {
         PulseTask task = taskList.start(newsletter, executor, ctx -> {});
 
-        assertEquals(List.of(task), taskList.tasks().peekValues().toList());
+        assertEquals(List.of(task), taskList.tasks().peek().stream().toList());
         assertEquals(newsletter, task.action());
         assertEquals(PulseTask.State.RUNNING, task.state().peek());
 
@@ -244,7 +244,7 @@ class TaskRunTest {
         }));
 
         assertEquals("Too deep", error.getMessage());
-        PulseTask task = taskList.tasks().peekValues().findFirst().orElseThrow();
+        PulseTask task = taskList.tasks().peek().stream().findFirst().orElseThrow();
         assertEquals(PulseTask.State.FAILED, task.state().peek());
         assertEquals(Optional.of(new Outcome.Failed("Too deep")), task.outcome().peek());
         assertFalse(taskList.isRunning(newsletter).peek());

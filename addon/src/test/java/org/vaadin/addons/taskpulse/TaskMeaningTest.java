@@ -107,6 +107,6 @@ class TaskMeaningTest {
         });
 
         assertFalse(failed.retryable().peek());
-        assertThrows(IllegalStateException.class, () -> taskList.retry(failed));
+        assertThrows(IllegalStateException.class, () -> failed.retry());
     }
 }

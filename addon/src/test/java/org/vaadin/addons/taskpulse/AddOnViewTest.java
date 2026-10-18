@@ -162,7 +162,7 @@ class AddOnViewTest extends BrowserlessTest {
         runPendingSignalsTasks();
         assertFalse($(PulseBlockingDialog.class).exists());
 
-        PulseTab.current().taskList().retry(task);
+        task.retry();
         assertTrue($(PulseBlockingDialog.class).exists(), "the Retry covers the tab it came from");
         executor.runAll();
     }

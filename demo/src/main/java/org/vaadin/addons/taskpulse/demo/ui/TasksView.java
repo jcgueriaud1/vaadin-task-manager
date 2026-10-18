@@ -62,7 +62,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         rows.addClassName("tasks-rows");
         Signal.effect(rows, () -> {
             PulseTask.State shownState = filter.get();
-            List<PulseTask> shown = taskList.tasks().getValues()
+            List<PulseTask> shown = taskList.tasks().get().stream()
                     .filter(task -> task.state().get() == shownState)
                     .toList()
                     .reversed();
@@ -76,7 +76,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         empty.addClassName("tasks-empty");
         empty.bindVisible(Signal.computed(() -> {
             PulseTask.State shownState = filter.get();
-            return taskList.tasks().getValues().noneMatch(task -> task.state().get() == shownState);
+            return taskList.tasks().get().stream().noneMatch(task -> task.state().get() == shownState);
         }));
         Button clearFinished = new Button("Clear finished", e -> taskList.clearFinished());
         clearFinished.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
@@ -88,7 +88,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         Signal.effect(detail, () -> {
             // A selected Task may since have been cleared or evicted
             Optional<PulseTask> task = selected.get()
-                    .filter(t -> taskList.tasks().getValues().anyMatch(t::equals));
+                    .filter(t -> taskList.tasks().get().stream().anyMatch(t::equals));
             detail.removeAll();
             Signal.untracked(() -> {
                 task.ifPresent(t -> detail.add(detailContent(t, taskList)));
@@ -143,7 +143,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         Button cancel = new Button("Cancel", e -> task.cancel());
         cancel.addThemeVariants(ButtonVariant.ERROR);
         cancel.bindVisible(task.running());
-        Button retry = new Button("Retry", e -> taskList.retry(task));
+        Button retry = new Button("Retry", e -> task.retry());
         retry.addThemeVariants(ButtonVariant.PRIMARY);
         retry.bindVisible(task.retryable());
         retry.bindEnabled(Signal.not(taskList.isRunning(task.action())));
@@ -172,7 +172,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
     }
 
     private static Tab filterTab(PulseTask.State state, PulseTaskList taskList) {
-        Signal<Long> count = Signal.computed(() -> taskList.tasks().getValues()
+        Signal<Long> count = Signal.computed(() -> taskList.tasks().get().stream()
                 .filter(task -> task.state().get() == state)
                 .count());
         Span label = new Span(PulseTaskParts.label(state));

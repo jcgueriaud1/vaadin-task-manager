@@ -206,8 +206,16 @@ public final class PulseTask {
         return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
     }
 
-    /** Starts a new Task with the same work on the same executor. */
-    PulseTask retry() {
+    /**
+     * Starts a new Task of the same Action as this Failed or Cancelled Task, with
+     * the same work on the same executor, and returns it. This Task stays as it was.
+     * Retried from a browser tab, a Task of a Blocking Action covers that tab.
+     *
+     * @throws IllegalStateException if this Task is not Failed or Cancelled, its
+     *                               Action is {@link PulseAction.Retry#NEVER}, or
+     *                               the Action already has a Running Task
+     */
+    public PulseTask retry() {
         if (!retryable().peek()) {
             throw new IllegalStateException("Task " + id + " can't be retried");
         }
@@ -264,7 +272,15 @@ public final class PulseTask {
         state.set(State.CANCELLED);
     }
 
-    void dismiss() {
+    /**
+     * Removes this Finished Task from the tray. It stays in the Task history.
+     *
+     * @throws IllegalStateException if the Task is Running
+     */
+    public void dismiss() {
+        if (state.peek() == State.RUNNING) {
+            throw new IllegalStateException("A Running Task cannot be Dismissed");
+        }
         dismissed.set(true);
     }
 

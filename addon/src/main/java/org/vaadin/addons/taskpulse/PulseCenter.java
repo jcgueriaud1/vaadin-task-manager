@@ -69,7 +69,7 @@ public class PulseCenter extends Div {
         });
         Span empty = new Span("No background tasks yet.");
         empty.addClassName("pulse-center-empty");
-        empty.bindVisible(Signal.computed(() -> taskList.tasks().getValues().findAny().isEmpty()));
+        empty.bindVisible(Signal.computed(() -> taskList.tasks().get().stream().findAny().isEmpty()));
         Button viewAll = new Button("View all", e -> {
             viewAllHandler.peek().ifPresent(Runnable::run);
             popover.close();
@@ -111,7 +111,7 @@ public class PulseCenter extends Div {
 
     /** Running Tasks, then the most recent Finished ones, newest first. */
     private static List<PulseTask> shown(PulseTaskList taskList) {
-        List<PulseTask> newestFirst = taskList.tasks().getValues().toList().reversed();
+        List<PulseTask> newestFirst = taskList.tasks().get().stream().toList().reversed();
         Stream<PulseTask> running = newestFirst.stream()
                 .filter(task -> task.running().get());
         Stream<PulseTask> finished = newestFirst.stream()

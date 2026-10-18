@@ -31,17 +31,17 @@ class TaskListTest {
         PulseTask generated = taskList.start(report, executor, ctx -> {});
         executor.runAll();
 
-        taskList.dismiss(sent);
+        sent.dismiss();
 
         assertEquals(List.of(generated), taskList.trayTasks().peek());
-        assertEquals(List.of(sent, generated), taskList.tasks().peekValues().toList());
+        assertEquals(List.of(sent, generated), taskList.tasks().peek().stream().toList());
     }
 
     @Test
     void aRunningTaskCannotBeDismissed() {
         PulseTask running = taskList.start(newsletter, executor, ctx -> {});
 
-        assertThrows(IllegalStateException.class, () -> taskList.dismiss(running));
+        assertThrows(IllegalStateException.class, () -> running.dismiss());
         assertEquals(List.of(running), taskList.trayTasks().peek());
     }
 
@@ -70,7 +70,7 @@ class TaskListTest {
         executor.runAll();
         assertTrue(failed.retryable().peek());
 
-        PulseTask returned = taskList.retry(failed);
+        PulseTask returned = failed.retry();
 
         assertEquals(2, taskList.tasks().peek().size());
         PulseTask retried = task(1);
@@ -94,7 +94,7 @@ class TaskListTest {
         executor.runAll();
 
         assertFalse(failed.retryable().peek());
-        assertThrows(IllegalStateException.class, () -> taskList.retry(failed));
+        assertThrows(IllegalStateException.class, () -> failed.retry());
         assertEquals(1, taskList.tasks().peek().size());
     }
 
@@ -102,7 +102,7 @@ class TaskListTest {
     void retryIsRefusedForASucceededTask() {
         PulseTask succeeded = taskList.start(newsletter, Runnable::run, ctx -> {});
 
-        assertThrows(IllegalStateException.class, () -> taskList.retry(succeeded));
+        assertThrows(IllegalStateException.class, () -> succeeded.retry());
         assertEquals(1, taskList.tasks().peek().size());
     }
 
@@ -113,9 +113,9 @@ class TaskListTest {
             throw new IllegalStateException("Server unreachable");
         });
         executor.runAll();
-        taskList.retry(failed);
+        failed.retry();
 
-        assertThrows(IllegalStateException.class, () -> taskList.retry(failed));
+        assertThrows(IllegalStateException.class, () -> failed.retry());
         assertEquals(2, taskList.tasks().peek().size());
     }
 
@@ -131,7 +131,7 @@ class TaskListTest {
 
         taskList.clearFinished();
 
-        assertEquals(List.of(running), taskList.tasks().peekValues().toList());
+        assertEquals(List.of(running), taskList.tasks().peek().stream().toList());
     }
 
     @Test
@@ -141,14 +141,14 @@ class TaskListTest {
             // Run on the test's thread: any Executor will do
             taskList.start(newsletter, Runnable::run, ctx -> {});
         }
-        List<PulseTask> before = taskList.tasks().peekValues().toList();
+        List<PulseTask> before = taskList.tasks().peek().stream().toList();
         PulseTask oldestFinished = before.get(1);
         PulseTask secondOldestFinished = before.get(2);
         assertEquals(50, before.size());
 
         PulseTask newest = taskList.start(sync, executor, ctx -> {});
 
-        List<PulseTask> tasks = taskList.tasks().peekValues().toList();
+        List<PulseTask> tasks = taskList.tasks().peek().stream().toList();
         assertEquals(50, tasks.size());
         assertSame(running, tasks.get(0));
         assertSame(secondOldestFinished, tasks.get(1));
@@ -190,6 +190,6 @@ class TaskListTest {
     }
 
     private PulseTask task(int index) {
-        return taskList.tasks().peekValues().toList().get(index);
+        return taskList.tasks().peek().stream().toList().get(index);
     }
 }

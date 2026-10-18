@@ -177,7 +177,7 @@ public final class PulseTab {
     }
 
     private void notifyUnseen() {
-        List<PulseTask> unseen = taskList.tasks().getValues()
+        List<PulseTask> unseen = taskList.tasks().get().stream()
                 .filter(task -> task.unseen().get())
                 .toList();
         Signal.untracked(() -> {

@@ -20,11 +20,14 @@ import org.vaadin.addons.taskpulse.PulseAction.Retry;
 /**
  * All Tasks of one user session, Running and Finished. Every browser tab of the
  * session sees the same list: get it with {@link #getCurrent()}.
+ * <p>
+ * It keeps at most 50 Tasks. When it is full, a start makes room by removing the
+ * oldest Finished Task, and throws if all 50 are Running.
  */
 public class PulseTaskList {
 
     /** The Task list keeps at most this many Tasks, evicting the oldest Finished Task first. */
-    public static final int MAX_TASKS = 50;
+    private static final int MAX_TASKS = 50;
 
     /** Runs each Task's work on a virtual thread of its own. */
     private static final Executor VIRTUAL_THREADS = command -> Thread.ofVirtual().name("taskpulse-", 0).start(command);
@@ -32,6 +35,7 @@ public class PulseTaskList {
     private final Clock clock;
     private final Executor executor;
     private final ListSignal<PulseTask> tasks = new ListSignal<>();
+    private final Signal<List<PulseTask>> taskValues = Signal.computed(() -> tasks.getValues().toList());
     private final List<Tab> tabs = new ArrayList<>();
     private long nextId = 1;
 
@@ -103,8 +107,9 @@ public class PulseTaskList {
         }
     }
 
-    public ListSignal<PulseTask> tasks() {
-        return tasks;
+    /** The Tasks in this list, oldest first. Only starting and clearing changes it. */
+    public Signal<List<PulseTask>> tasks() {
+        return taskValues;
     }
 
     /** The Task with the given id, if it is still in this list. */
@@ -126,31 +131,10 @@ public class PulseTaskList {
     }
 
     /** The Tasks the tray shows: all but the Dismissed ones. */
-    public Signal<List<PulseTask>> trayTasks() {
+    Signal<List<PulseTask>> trayTasks() {
         return Signal.computed(() -> tasks.getValues()
                 .filter(task -> !task.dismissed().get())
                 .toList());
-    }
-
-    /** Removes a Finished Task from the tray. It stays in the Task history. */
-    public void dismiss(PulseTask task) {
-        if (task.state().peek() == PulseTask.State.RUNNING) {
-            throw new IllegalStateException("A Running Task cannot be Dismissed");
-        }
-        task.dismiss();
-    }
-
-    /**
-     * Starts a new Task of the same Action as a Failed or Cancelled Task, with the
-     * same work on the same executor, and returns it. The old Task stays as it was.
-     * Retried from a browser tab, a Task of a Blocking Action covers that tab.
-     *
-     * @throws IllegalStateException if the Task is not Failed or Cancelled, its
-     *                               Action is {@link Retry#NEVER}, or the
-     *                               Action already has a Running Task
-     */
-    public PulseTask retry(PulseTask task) {
-        return task.retry();
     }
 
     /** Removes every Finished Task from the Task list. Running Tasks stay. */

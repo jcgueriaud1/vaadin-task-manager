@@ -86,7 +86,7 @@ class CompletionToastTest extends SpringBrowserlessTest {
         test(startButton("Sync with server")).click();
         executor.runAll();
         runPendingSignalsTasks();
-        PulseTask failed = context.getBean(PulseTaskList.class).tasks().peekValues().findFirst().orElseThrow();
+        PulseTask failed = context.getBean(PulseTaskList.class).tasks().peek().stream().findFirst().orElseThrow();
 
         test($(Button.class).from($(Notification.class).single()).withText("Details").single()).click();
 

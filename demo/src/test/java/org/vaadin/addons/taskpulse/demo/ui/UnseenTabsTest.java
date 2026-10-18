@@ -167,7 +167,7 @@ class UnseenTabsTest extends SpringBrowserlessTest {
     }
 
     private long taskId() {
-        return context.getBean(PulseTaskList.class).tasks().peekValues().findFirst().orElseThrow().id();
+        return context.getBean(PulseTaskList.class).tasks().peek().stream().findFirst().orElseThrow().id();
     }
 
     /** The JavaScript calls the tab would send that show a native notification. */

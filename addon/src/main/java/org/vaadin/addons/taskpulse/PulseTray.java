@@ -101,7 +101,7 @@ public class PulseTray extends Div {
         cancel.bindVisible(task.running());
         Button open = openButton(task, openHandler);
         open.bindVisible(Signal.computed(() -> openHandler.get().isPresent() && !task.running().get()));
-        Button dismiss = new Button(new Icon(VaadinIcon.CLOSE_SMALL), e -> taskList.dismiss(task));
+        Button dismiss = new Button(new Icon(VaadinIcon.CLOSE_SMALL), e -> task.dismiss());
         dismiss.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
         dismiss.setAriaLabel("Dismiss " + task.action().name());
         dismiss.addClassName("pulse-dismiss");

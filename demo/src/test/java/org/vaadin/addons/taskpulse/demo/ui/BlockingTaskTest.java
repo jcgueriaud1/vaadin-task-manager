@@ -134,7 +134,7 @@ class BlockingTaskTest extends SpringBrowserlessTest {
         test(startButton("Restore backup")).click();
         executor.runAll();
         runPendingSignalsTasks();
-        long failed = context.getBean(PulseTaskList.class).tasks().peek().getFirst().peek().id();
+        long failed = context.getBean(PulseTaskList.class).tasks().peek().getFirst().id();
         navigate("tasks/" + failed, TasksView.class);
         assertFalse($(Dialog.class).exists());
 

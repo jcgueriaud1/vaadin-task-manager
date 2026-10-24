@@ -1,0 +1,21 @@
+# TaskPulse
+
+> A Vaadin Flow add-on (org.vaadin.addons:taskpulse, Java 21, Vaadin 25, no Spring needed) for running long work in the background from a Vaadin UI. Users start it, follow its progress in a task center, a tray, toasts and native notifications, and get notified when it finishes, in every browser tab of their session. Public types carry the `Pulse` prefix: PulseAction, PulseTask, PulseTaskList, PulseTaskContext, PulseCenter, PulseTab, PulseTaskParts.
+
+## Docs
+
+- [README](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/README.md): installation, setup, running work as Tasks, executors, failure and cancellation, own views, Spring, styling
+- [Agent skill](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/skills/taskpulse/SKILL.md): the condensed guide for coding agents, installed with `npx skills add jcgueriaud1/vaadin-task-manager --skill taskpulse`, also shipped in the jar at META-INF/skills/jcgueriaud1/vaadin-task-manager/taskpulse/SKILL.md
+- [Glossary](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/GLOSSARY.md): Action, Task, Task list, Blocking Task, Retry, Unseen and the other domain words
+
+## API
+
+- [Package overview](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/package-info.java): setup and starting a Task, with code
+- [PulseTaskList](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseTaskList.java): the session's Tasks, start(action, work), executors
+- [PulseTaskContext](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseTaskContext.java): what the work reports
+- [PulseTab](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseTab.java): one per browser tab, the open and view-all handlers
+
+## Optional
+
+- [Architecture decisions](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/docs/adr/): why the application runs the work, local signals, the Pulse prefix
+- [Demo app](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/demo/README.md): a Spring Boot app using every feature

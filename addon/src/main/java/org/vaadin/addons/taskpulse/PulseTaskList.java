@@ -39,6 +39,7 @@ public class PulseTaskList {
     private final List<Tab> tabs = new ArrayList<>();
     private long nextId = 1;
 
+    /** A Task list on the system clock, whose work runs on a virtual thread per Task. */
     public PulseTaskList() {
         this(Clock.systemDefaultZone());
     }

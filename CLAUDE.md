@@ -5,6 +5,8 @@ A Vaadin add-on (Java 21, Vaadin 25.3, no Spring) and its Spring Boot 4.1 demo, 
 - `addon/`: the add-on, `org.vaadin.addons:taskpulse`, package `org.vaadin.addons.taskpulse`.
   Its public types carry the `Pulse` prefix (ADR 0003).
 - `demo/`: the demo app, package `org.vaadin.addons.taskpulse.demo`, deployed to Render.
+- `skills/taskpulse/SKILL.md`: the agent skill for apps using the add-on, packaged in the jar too. Keep it, the
+  package overview (`package-info.java`) and `llms.txt` in step with the README when the public API changes.
 
 - Run: `./mvnw` at the root (builds the add-on, then runs the demo), then open http://localhost:8080
 - Test: `./mvnw verify` (add-on unit and browserless tests, demo browserless UI tests)

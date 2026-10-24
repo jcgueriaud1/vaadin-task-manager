@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pom.xml .
 COPY addon addon
 COPY demo demo
+COPY skills skills
 # The demo and the add-on module it depends on
 RUN mvn -B -DskipTests -pl demo -am package
 

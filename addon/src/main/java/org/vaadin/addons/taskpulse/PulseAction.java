@@ -8,6 +8,10 @@ package org.vaadin.addons.taskpulse;
  * <p>
  * Two Actions with the same name, blocking mode and retry are the same Action:
  * the Task list allows at most one Running Task of it per session.
+ *
+ * @param name what the user sees in the tray, the task center and the toasts
+ * @param blockingMode whether its Tasks block the view that started them
+ * @param retry whether its Failed or Cancelled Tasks can be Retried
  */
 public record PulseAction(String name, BlockingMode blockingMode, Retry retry) {
 
@@ -18,7 +22,10 @@ public record PulseAction(String name, BlockingMode blockingMode, Retry retry) {
 
     /** Whether a Task stops the user from working in the view that started it. */
     public enum BlockingMode {
-        BLOCKING, NON_BLOCKING
+        /** The Task covers the browser tab that started it with a dialog until it finishes or is cancelled. */
+        BLOCKING,
+        /** The Task runs while the user keeps working, followed in the task center and the tray. */
+        NON_BLOCKING
     }
 
     /** Whether the Action's Tasks can be Retried once they are Failed or Cancelled. */

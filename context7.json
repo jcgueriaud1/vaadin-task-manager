@@ -1,0 +1,13 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "TaskPulse",
+  "description": "Vaadin Flow add-on for running long work in the background from a Vaadin UI, with a task center, a tray, toasts and native notifications that follow each Task's progress in every browser tab of the session.",
+  "folders": ["docs/adr", "skills"],
+  "excludeFiles": ["CLAUDE.md"],
+  "rules": [
+    "Turn on server push with @Push on the AppShellConfigurator, and put new PulseCenter() in the main layout's navbar.",
+    "Start work with PulseTaskList.getCurrent().start(action, work); the work reports only through its PulseTaskContext and holds no view or component, because a Retry runs it again.",
+    "An Action has at most one Running Task per session: bind the start button to Signal.not(taskList.isRunning(action)).",
+    "Mark work that must not run twice, such as a payment, with new PulseAction(name, mode, Retry.NEVER)."
+  ]
+}

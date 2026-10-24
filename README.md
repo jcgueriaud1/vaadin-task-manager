@@ -256,12 +256,41 @@ html {
 }
 ```
 
+## Using TaskPulse with a coding agent
+
+The add-on comes with an agent skill, [`skills/taskpulse/SKILL.md`](skills/taskpulse/SKILL.md): setup, starting
+Tasks, executors, how a Task ends, and the rules agents get wrong. Install it into your project's agents with
+the [`skills` CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add jcgueriaud1/vaadin-task-manager --skill taskpulse
+```
+
+The add-on jar carries the same file at `META-INF/skills/jcgueriaud1/vaadin-task-manager/taskpulse/SKILL.md`, the
+[SkillsJars](https://github.com/skillsjars/skillsjars) layout, for tools that extract skills from dependency jars.
+Its `-sources.jar` and `-javadoc.jar` hold the API reference, starting with the package overview.
+
+Agents read `AGENTS.md` or `CLAUDE.md` at the start of every session, so a few lines there make them reach for
+the skill before writing TaskPulse code:
+
+```markdown
+## TaskPulse
+
+Background work in this app runs as TaskPulse Tasks (org.vaadin.addons.taskpulse, `Pulse*` types).
+Before writing or changing code that starts, follows or displays Tasks, read the `taskpulse` skill.
+Bind start buttons to `Signal.not(taskList.isRunning(action))`: an Action has one Running Task per session.
+```
+
+The repository also has an [`llms.txt`](llms.txt) index and a [`context7.json`](context7.json) for
+[Context7](https://context7.com).
+
 ## Repository layout
 
 ```text
 addon/   # the add-on: org.vaadin.addons:taskpulse, package org.vaadin.addons.taskpulse
 demo/    # the demo app (Spring Boot), deployed to Render; see demo/README.md
-docs/    # ADRs and how coding agents work with this repository
+docs/    # ADRs, research, and how coding agents work with this repository
+skills/  # the agent skill for apps using the add-on, also packaged in the jar
 ```
 
 ```bash
@@ -289,6 +318,7 @@ To build the Directory zip locally: `./mvnw -Pdirectory -pl addon -am package`. 
 - [GLOSSARY.md](GLOSSARY.md): the domain language used in code, tests and issues
 - [docs/adr/](docs/adr/): architecture decisions
 - [docs/agents/](docs/agents/): how coding agents work with this repository's issues and labels
+- [docs/research/](docs/research/): research notes, such as how to get the add-on's docs to coding agents
 
 ## License
 

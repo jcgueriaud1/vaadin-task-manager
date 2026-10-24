@@ -73,7 +73,8 @@ final class PulseToasts {
         Toast toast = new Toast();
         Span resultSummary = new Span(outcome.resultSummary());
         resultSummary.addClassName("pulse-result-summary");
-        toast.add(icon(VaadinIcon.CHECK_CIRCLE, "succeeded"), text(task, resultSummary),
+        toast.add(icon(VaadinIcon.CHECK_CIRCLE, "succeeded"),
+                text(task, resultSummary, PulseTaskParts.resultFile(task)),
                 openButton("Open", task, toast, openHandler), dismiss(toast));
         return toast;
     }
@@ -97,10 +98,11 @@ final class PulseToasts {
     }
 
     /** The Task's name in bold, then what it produced or why it failed. */
-    private static Div text(PulseTask task, Span outcome) {
+    private static Div text(PulseTask task, Component... outcome) {
         Span name = new Span(task.action().name());
         name.addClassName("pulse-name");
-        Div text = new Div(name, outcome);
+        Div text = new Div(name);
+        text.add(outcome);
         text.addClassName("pulse-toast-text");
         return text;
     }

@@ -1,5 +1,9 @@
 package org.vaadin.addons.taskpulse.demo.ui;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 
@@ -50,6 +54,7 @@ public class TestTaskConfig {
                     executor.pause();
                     ctx.setProgress(1);
                     ctx.setResultSummary("3 CSV files");
+                    ctx.setResultFile(tempFile("export-", ".zip"));
                 }),
                 new ActionsView.Demo(new PulseAction("Sync with server", BlockingMode.NON_BLOCKING), ctx -> {
                     throw new IllegalStateException("Server unreachable");
@@ -67,5 +72,15 @@ public class TestTaskConfig {
                     executor.pause();
                     throw new IllegalStateException("Backup is corrupt");
                 })));
+    }
+
+    private static Path tempFile(String prefix, String suffix) {
+        try {
+            Path file = Files.createTempFile(prefix, suffix);
+            file.toFile().deleteOnExit();
+            return file;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

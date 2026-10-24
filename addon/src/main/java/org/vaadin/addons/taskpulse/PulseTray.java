@@ -91,7 +91,7 @@ public class PulseTray extends Div {
     private Div row(PulseTask task, PulseTaskList taskList) {
         Span name = new Span(task.action().name());
         name.addClassName("pulse-name");
-        Div body = new Div(name, PulseTaskParts.meta(task));
+        Div body = new Div(name, PulseTaskParts.meta(task), PulseTaskParts.resultFile(task));
         body.addClassName("pulse-row-body");
 
         Button cancel = new Button("Cancel", e -> task.cancel());

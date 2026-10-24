@@ -29,7 +29,8 @@ class DemoActionsViewTest extends SpringBrowserlessTest {
     @Test
     void eachDemoActionHasACardWithItsCode() {
         List<Div> cards = $(Div.class).withClassName("action-card").all();
-        assertEquals(List.of("Send newsletter", "Generate report", "Sync with server", "Import data"),
+        assertEquals(List.of("Send newsletter", "Generate report", "Sync with server", "Import data",
+                "Export customers"),
                 cards.stream().map(card -> $(H2.class).from(card).single().getText()).toList());
         for (Div card : cards) {
             String name = $(H2.class).from(card).single().getText();
@@ -42,5 +43,6 @@ class DemoActionsViewTest extends SpringBrowserlessTest {
         assertEquals(BlockingMode.NON_BLOCKING, ActionsView.SEND_NEWSLETTER.blockingMode());
         assertEquals(BlockingMode.NON_BLOCKING, ActionsView.GENERATE_REPORT.blockingMode());
         assertEquals(BlockingMode.BLOCKING, ActionsView.IMPORT_DATA.blockingMode());
+        assertEquals(BlockingMode.NON_BLOCKING, ActionsView.EXPORT_CUSTOMERS.blockingMode());
     }
 }

@@ -1,5 +1,6 @@
 package org.vaadin.addons.taskpulse;
 
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +39,7 @@ public final class PulseTask {
     private final ValueSignal<Double> progress = new ValueSignal<>(0.0);
     private final ValueSignal<Boolean> reportsProgress = new ValueSignal<>(false);
     private final ValueSignal<String> resultSummary = new ValueSignal<>("");
+    private final ValueSignal<Optional<Path>> resultFile = new ValueSignal<>(Optional.empty());
     private final ValueSignal<String> errorMessage = new ValueSignal<>("");
     private final ValueSignal<Boolean> dismissed = new ValueSignal<>(false);
     private final ValueSignal<Boolean> unseen = new ValueSignal<>(false);
@@ -126,7 +128,7 @@ public final class PulseTask {
     public Signal<Optional<Outcome>> outcome() {
         return Signal.computed(() -> switch (state.get()) {
             case RUNNING -> Optional.empty();
-            case SUCCEEDED -> Optional.of(new Outcome.Succeeded(resultSummary.get()));
+            case SUCCEEDED -> Optional.of(new Outcome.Succeeded(resultSummary.get(), resultFile.get()));
             case FAILED -> Optional.of(new Outcome.Failed(errorMessage.get()));
             case CANCELLED -> Optional.of(new Outcome.Cancelled());
         });
@@ -237,6 +239,13 @@ public final class PulseTask {
             }
 
             @Override
+            public void setResultFile(Path file) {
+                Optional<Path> value = Optional.of(file);
+                throwIfCancelled();
+                resultFile.set(value);
+            }
+
+            @Override
             public void setProgress(double value) {
                 throwIfCancelled();
                 progress.set(Math.clamp(value, 0.0, 1.0));
@@ -296,8 +305,16 @@ public final class PulseTask {
     /** How a Finished Task ended. */
     public sealed interface Outcome {
 
-        /** The work returned. The Result summary is empty if the work didn't set one. */
-        record Succeeded(String resultSummary) implements Outcome {
+        /**
+         * The work returned. The Result summary is empty, and the Result file
+         * absent, if the work didn't set them.
+         */
+        record Succeeded(String resultSummary, Optional<Path> resultFile) implements Outcome {
+
+            /** Succeeded without a Result file. */
+            public Succeeded(String resultSummary) {
+                this(resultSummary, Optional.empty());
+            }
         }
 
         /** The work threw, or the executor refused it. */

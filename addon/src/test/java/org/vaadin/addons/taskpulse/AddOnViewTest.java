@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,8 +16,10 @@ import org.junit.jupiter.api.Test;
 
 import com.vaadin.browserless.BrowserlessTest;
 import com.vaadin.browserless.ViewPackages;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.popover.Popover;
 import com.vaadin.flow.component.popover.PopoverTester;
@@ -57,6 +62,49 @@ class AddOnViewTest extends BrowserlessTest {
         assertTrue(tray.contains("Export data"), tray);
         assertTrue(tray.contains("3 CSV files"), tray);
         assertFalse(task.unseen().peek(), "the tab is tracked and visible");
+    }
+
+    @Test
+    void theTrayAndTheTaskCenterLinkToTheResultFileOnceTheTaskSucceeded() throws IOException {
+        navigate(CenterView.class);
+        Path file = Files.createTempFile("customers-", ".html");
+        file.toFile().deleteOnExit();
+        TestExecutor executor = new TestExecutor();
+        PulseTab.current().taskList().start(EXPORT, executor, ctx -> {
+            ctx.setResultFile(file);
+            executor.pause();
+        });
+        executor.runNext();
+        runPendingSignalsTasks();
+        assertFalse(hasResultFileLink($(PulseTray.class).single()), "not while Running");
+
+        executor.resume();
+        runPendingSignalsTasks();
+
+        for (Anchor link : List.of(resultFileLink($(PulseTray.class).single()), resultFileLink(openPopover()))) {
+            assertEquals(file.getFileName().toString(), link.getElement().getTextRecursively());
+            assertEquals("Open " + file.getFileName(), link.getElement().getAttribute("aria-label"));
+            assertEquals("_blank", link.getTarget().orElseThrow());
+            assertFalse(link.getHref().isEmpty());
+        }
+    }
+
+    @Test
+    void aTaskWithoutAResultFileShowsNoLink() {
+        navigate(CenterView.class);
+        PulseTab.current().taskList().start(EXPORT, Runnable::run, ctx -> {});
+        runPendingSignalsTasks();
+
+        assertFalse(hasResultFileLink($(PulseTray.class).single()));
+    }
+
+    /** The visible link to the Result file. */
+    private Anchor resultFileLink(Component from) {
+        return $(Anchor.class).from(from).withClassName("pulse-result-file").single();
+    }
+
+    private boolean hasResultFileLink(Component from) {
+        return $(Anchor.class).from(from).withClassName("pulse-result-file").exists();
     }
 
     @Test

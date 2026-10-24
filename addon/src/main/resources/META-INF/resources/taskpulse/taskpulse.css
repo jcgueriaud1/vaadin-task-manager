@@ -123,6 +123,32 @@ html {
   margin: 0;
 }
 
+/* The link that opens a Task's Result file in a new tab */
+
+.pulse-result-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  font-size: var(--pulse-font-size-s);
+}
+
+.pulse-result-file vaadin-icon {
+  flex: none;
+  width: 1em;
+  height: 1em;
+}
+
+.pulse-result-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pulse-toast-text > .pulse-result-file {
+  color: var(--vaadin-text-color);
+}
+
 /* Task center: the navbar button and its popover */
 
 .pulse-center {

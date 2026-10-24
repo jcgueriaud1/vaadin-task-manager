@@ -1,11 +1,18 @@
 package org.vaadin.addons.taskpulse;
 
+import java.nio.file.Path;
+import java.util.Optional;
+
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.AnchorTarget;
+import com.vaadin.flow.component.html.AttachmentType;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.progressbar.ProgressBar;
+import com.vaadin.flow.server.streams.DownloadHandler;
 import com.vaadin.flow.signals.Signal;
 import org.vaadin.addons.taskpulse.PulseTask.Outcome;
 import org.vaadin.addons.taskpulse.PulseTask.State;
@@ -82,6 +89,29 @@ public final class PulseTaskParts {
         span.addClassName("pulse-result-summary");
         span.bindVisible(task.outcome().map(o -> o.orElse(null) instanceof Outcome.Succeeded));
         return span;
+    }
+
+    /**
+     * A link with the name of the Result file of a Succeeded Task, which opens
+     * it in a new browser tab. Shown only once the Task Succeeded with one.
+     */
+    public static Anchor resultFile(PulseTask task) {
+        Signal<Optional<Path>> file = task.outcome().map(
+                o -> o.orElse(null) instanceof Outcome.Succeeded s ? s.resultFile() : Optional.empty());
+        Anchor link = new Anchor();
+        link.addClassName("pulse-result-file");
+        link.setTarget(AnchorTarget.BLANK);
+        Signal.effect(link, () -> file.get().ifPresent(path -> {
+            String name = path.getFileName().toString();
+            link.setHref(DownloadHandler.forFile(path.toFile()).inline(), AttachmentType.INLINE);
+            link.removeAll();
+            Icon icon = VaadinIcon.FILE_O.create();
+            icon.getElement().setAttribute("aria-hidden", "true");
+            link.add(icon, new Span(name));
+            link.getElement().setAttribute("aria-label", "Open " + name);
+        }));
+        link.bindVisible(file.map(Optional::isPresent));
+        return link;
     }
 
     /** The error of a Failed Task, shown only once it Failed. */

@@ -12,6 +12,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -138,6 +139,7 @@ public class TasksView extends Div implements BeforeEnterObserver {
         Span statusText = new Span(task.statusText());
         statusText.addClassName("task-status-text");
         Span resultSummary = PulseTaskParts.resultSummary(task);
+        Anchor resultFile = PulseTaskParts.resultFile(task);
         Span errorMessage = PulseTaskParts.errorMessage(task);
 
         Button cancel = new Button("Cancel", e -> task.cancel());
@@ -156,7 +158,8 @@ public class TasksView extends Div implements BeforeEnterObserver {
         title.addClassName("task-detail-title");
         Div header = new Div(title, buttons);
         header.addClassName("task-detail-header");
-        return new Component[] { header, PulseTaskParts.progressBar(task), statusText, resultSummary, errorMessage };
+        return new Component[] { header, PulseTaskParts.progressBar(task), statusText, resultSummary, resultFile,
+                errorMessage };
     }
 
     /** For example "12 s", "1 min 30 s" or "2 h 5 min". */

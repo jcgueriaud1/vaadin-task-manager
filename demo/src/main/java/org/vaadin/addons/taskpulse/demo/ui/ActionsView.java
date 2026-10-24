@@ -1,5 +1,9 @@
 package org.vaadin.addons.taskpulse.demo.ui;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
@@ -34,6 +38,7 @@ public class ActionsView extends Div {
     static final PulseAction GENERATE_REPORT = new PulseAction("Generate report", BlockingMode.NON_BLOCKING);
     static final PulseAction SYNC_WITH_SERVER = new PulseAction("Sync with server", BlockingMode.NON_BLOCKING);
     static final PulseAction IMPORT_DATA = new PulseAction("Import data", BlockingMode.BLOCKING);
+    static final PulseAction EXPORT_CUSTOMERS = new PulseAction("Export customers", BlockingMode.NON_BLOCKING);
 
     // The work of each Action. It reports through its PulseTaskContext and never touches the UI
 
@@ -86,6 +91,32 @@ public class ActionsView extends Div {
         }
         ctx.setStatusText("");
         ctx.setResultSummary("2,480 records");
+    }
+
+    // With a Result file: the toast, the tray and the task center link to it, and it opens in a new tab
+    static void exportCustomers(PulseTaskContext ctx) {
+        int customers = 10;
+        StringBuilder rows = new StringBuilder();
+        for (int customer = 1; customer <= customers; customer++) {
+            ctx.setStatusText("Exporting customer " + customer + " of " + customers);
+            sleep(500);
+            rows.append("<tr><td>").append(customer).append("</td><td>Customer ").append(customer)
+                    .append("</td></tr>\n");
+            ctx.setProgress((double) customer / customers);
+        }
+        try {
+            // The demo only removes it on shutdown; an app would clean up old exports
+            Path folder = Files.createTempDirectory("export-");
+            folder.toFile().deleteOnExit();
+            Path file = folder.resolve("customers.html");
+            file.toFile().deleteOnExit();
+            Files.writeString(file, "<!doctype html><title>Customers</title><table>\n" + rows + "</table>\n");
+            ctx.setStatusText("");
+            ctx.setResultSummary(customers + " customers");
+            ctx.setResultFile(file);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** An Action and its work, as one card shows them. */
@@ -194,6 +225,46 @@ public class ActionsView extends Div {
 
                 // In the view: a regular button, which also opens the dialog
                 add(startButton(IMPORT_DATA, ActionsView::importData));"""));
+        add(card(new Demo(EXPORT_CUSTOMERS, ActionsView::exportCustomers), "Non-blocking, with a Result file",
+                """
+                Its work writes a file slowly, then hands it over with setResultFile. \
+                Once it Succeeds, the toast, the tray and the task center show a link \
+                that opens the file in a new browser tab.""",
+                """
+                static final PulseAction EXPORT_CUSTOMERS =
+                        new PulseAction("Export customers", BlockingMode.NON_BLOCKING);
+
+                static void exportCustomers(PulseTaskContext ctx) {
+                    int customers = 10;
+                    StringBuilder rows = new StringBuilder();
+                    for (int customer = 1; customer <= customers; customer++) {
+                        ctx.setStatusText("Exporting customer " + customer
+                                + " of " + customers);
+                        sleep(500);
+                        rows.append("<tr><td>").append(customer)
+                                .append("</td><td>Customer ").append(customer)
+                                .append("</td></tr>\\n");
+                        ctx.setProgress((double) customer / customers);
+                    }
+                    try {
+                        // The demo only removes it on shutdown;
+                        // an app would clean up old exports
+                        Path folder = Files.createTempDirectory("export-");
+                        folder.toFile().deleteOnExit();
+                        Path file = folder.resolve("customers.html");
+                        file.toFile().deleteOnExit();
+                        Files.writeString(file, "<!doctype html><title>Customers</title>"
+                                + "<table>\\n" + rows + "</table>\\n");
+                        ctx.setStatusText("");
+                        ctx.setResultSummary(customers + " customers");
+                        ctx.setResultFile(file);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+
+                // In the view: a regular button
+                add(startButton(EXPORT_CUSTOMERS, ActionsView::exportCustomers));"""));
     }
 
     /** Shows the given Actions instead of the demo ones, without explanations. For tests. */

@@ -17,6 +17,7 @@ import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
@@ -65,6 +66,27 @@ class CompletionToastTest extends SpringBrowserlessTest {
         assertTrue(text.contains("Export data"), text);
         assertTrue(text.contains("3 CSV files"), text);
         assertTrue($(Button.class).from(toast).withAriaLabel("Dismiss").exists());
+    }
+
+    @Test
+    void aSucceededTaskWithAResultFileShowsALinkThatOpensItInANewTab() {
+        test(startButton("Export data")).click();
+        executor.runAll();
+        runPendingSignalsTasks();
+
+        Anchor link = $(Anchor.class).from($(Notification.class).single()).withClassName("pulse-result-file").single();
+        String name = link.getElement().getTextRecursively();
+        assertTrue(name.startsWith("export-") && name.endsWith(".zip"), name);
+        assertEquals("_blank", link.getTarget().orElseThrow());
+    }
+
+    @Test
+    void aSucceededTaskWithoutAResultFileShowsNoLink() {
+        test(startButton("Generate report")).click();
+        executor.runAll();
+        runPendingSignalsTasks();
+
+        assertFalse($(Anchor.class).from($(Notification.class).single()).withClassName("pulse-result-file").exists());
     }
 
     @Test

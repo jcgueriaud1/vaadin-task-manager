@@ -33,7 +33,7 @@ A Task that is Succeeded, Failed or Cancelled.
 _Avoid_: Done task, completed task (Succeeded is the success case only)
 
 **Outcome**:
-How a Finished Task ended: Succeeded, with its Result summary if it has one; Failed, with the error that stopped it; or Cancelled.
+How a Finished Task ended: Succeeded, with its Result summary and Result file if it has them; Failed, with the error that stopped it; or Cancelled.
 _Avoid_: Result, end state
 
 **Cancellation**:
@@ -51,6 +51,10 @@ _Avoid_: Message, step, label
 **Result summary**:
 An optional short text a Succeeded Task ends with, describing what it produced. For example "5 PDF files".
 _Avoid_: Result, output
+
+**Result file**:
+An optional file a Succeeded Task ends with, which the user opens in a new browser tab from the Task. For example the PDF a slow export wrote.
+_Avoid_: Attachment, download, output
 
 **Retry**:
 Starting a new Task of the same Action, with the same work, from a Failed or Cancelled Task. An Action can be marked never retried, for work that must not run twice; its Tasks can't be retried. The old Task stays as it was. Retrying a Blocking Task blocks the view it was retried from.

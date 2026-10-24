@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,27 @@ class TaskMeaningTest {
         PulseTask task = taskList.start(report, Runnable::run, ctx -> {});
 
         assertEquals(Optional.of(new Outcome.Succeeded("")), task.outcome().peek());
+    }
+
+    @Test
+    void aSucceededTaskEndsWithTheResultFileItsWorkSet() {
+        Path file = Path.of("customers.html");
+        PulseTask task = taskList.start(report, Runnable::run, ctx -> {
+            ctx.setResultSummary("10 customers");
+            ctx.setResultFile(file);
+        });
+
+        assertEquals(Optional.of(new Outcome.Succeeded("10 customers", Optional.of(file))), task.outcome().peek());
+    }
+
+    @Test
+    void aFailedTaskHasNoResultFile() {
+        PulseTask task = taskList.start(report, Runnable::run, ctx -> {
+            ctx.setResultFile(Path.of("customers.html"));
+            throw new IllegalStateException("Disk full");
+        });
+
+        assertEquals(Optional.of(new Outcome.Failed("Disk full")), task.outcome().peek());
     }
 
     @Test

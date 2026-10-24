@@ -15,7 +15,7 @@ The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
 
 - **Tasks you start from your own code**: an **Action** is a name and a blocking mode. You start a **Task** of
   it with its work, which runs on a virtual thread or on the executor you choose, and the work reports its
-  **Status text**, **Progress** and **Result summary** as it goes. An Action has at most one Running Task per session.
+  **Status text**, **Progress**, **Result summary** and **Result file** as it goes. An Action has at most one Running Task per session.
 - **Task center** (`PulseCenter`): a navbar button that says how many Tasks are Running, with a ring for their
   overall Progress and a badge for **Unseen** Tasks. It opens a popover with the Running and recent Finished
   Tasks, and the button that turns on native notifications.
@@ -120,6 +120,7 @@ reports through its context:
 | `setStatusText(String)`    | the short line that says what the Task is doing now                          |
 | `setProgress(double)`      | how much is done, from 0 to 1, clamped. Until the first call, the Task is indeterminate |
 | `setResultSummary(String)` | what a Succeeded Task produced, for example "2,480 records"                  |
+| `setResultFile(Path)`      | a file a Succeeded Task produced. The toast, the tray, the task center and `PulseTaskParts.resultFile(task)` link to it, and it opens in a new browser tab |
 | `isCancelled()`            | whether the user asked it to stop, for work that rarely reports              |
 
 ```java
@@ -130,6 +131,17 @@ static void importData(PulseTaskContext ctx) {
         ctx.setProgress(file / 8.0);
     }
     ctx.setResultSummary("2,480 records");
+}
+```
+
+Work that writes a file hands it over with `setResultFile`, and the user opens it from the Task once it
+Succeeds, from any tab of the session. The file must still exist then: deleting old ones is up to the app.
+
+```java
+static void exportCustomers(PulseTaskContext ctx) {
+    Path file = writeCustomers(ctx); // slow: reports its Progress as it goes
+    ctx.setResultSummary("1,240 customers");
+    ctx.setResultFile(file);
 }
 ```
 

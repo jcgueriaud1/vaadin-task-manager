@@ -123,7 +123,7 @@ public class PulseCenter extends Div {
     private Div row(PulseTask task) {
         Span name = new Span(task.action().name());
         name.addClassName("pulse-name");
-        Div body = new Div(name, PulseTaskParts.meta(task));
+        Div body = new Div(name, PulseTaskParts.meta(task), PulseTaskParts.resultFile(task));
         body.addClassName("pulse-row-body");
         Button open = PulseTray.openButton(task, openHandler);
         open.addClickListener(e -> popover.close());

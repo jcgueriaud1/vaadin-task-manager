@@ -194,6 +194,6 @@ class BlockingTaskTest extends SpringBrowserlessTest {
     }
 
     private Button startButton(String actionName) {
-        return $(Button.class).withAriaLabel("Start " + actionName).single();
+        return $(Button.class).withAttribute("data-resting-name", "Start " + actionName).single();
     }
 }

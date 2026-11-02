@@ -40,6 +40,16 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- The agent skill, at the SkillsJars path that tools extract from dependency jars -->
+            <resource>
+                <directory>${project.basedir}/../skills</directory>
+                <targetPath>META-INF/skills/jcgueriaud1/vaadin-task-manager</targetPath>
+            </resource>
+        </resources>
         <plugins>
             <!-- The demo's tests drive Tasks with the same TestExecutor and TestClock -->
             <plugin>
@@ -49,6 +59,7 @@
                     <archive>
                         <manifestEntries>
                             <Vaadin-Package-Version>1</Vaadin-Package-Version>
+                            <Automatic-Module-Name>org.vaadin.addons.taskpulse</Automatic-Module-Name>
                             <Implementation-Title>${project.name}</Implementation-Title>
                             <Implementation-Version>${project.version}</Implementation-Version>
                             <Implementation-Vendor>${project.organization.name}</Implementation-Vendor>

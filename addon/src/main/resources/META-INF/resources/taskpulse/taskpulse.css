@@ -368,3 +368,242 @@ vaadin-notification-card.pulse-toast::part(content) {
 vaadin-dialog .pulse-progress {
   min-width: min(20rem, 70vw);
 }
+
+/*
+ * Start button. The server sets data-phase (idle, running, succeeded, failed or
+ * cancelled), the "determinate" class and --value, the Task's Progress from 0
+ * to 1. The rest is CSS: the label rolls up through the reel, and the "Done" or
+ * "Failed" look fades back to resting through --pulse-start-hold.
+ */
+
+html {
+  --pulse-start-background: var(--pulse-accent);
+  --pulse-start-text: var(--aura-accent-contrast-color, var(--lumo-primary-contrast-color, #fff));
+  /* Darkened so the light label keeps 4.5:1 in Aura, Lumo and their dark variants */
+  --pulse-start-done-background: color-mix(in srgb, var(--aura-green, var(--lumo-success-color, #1e8e3e)) 72%, #000);
+  --pulse-start-failed-background: color-mix(in srgb, var(--pulse-error) 88%, #000);
+  --pulse-start-hold-duration: 2.6s;
+  /* The accent text color: it keeps 3:1 against the page also in dark themes */
+  --pulse-start-focus-ring: var(--pulse-accent-text);
+}
+
+@property --pulse-start-hold {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --pulse-start-row {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+vaadin-button.pulse-start-button {
+  --_tint: var(--pulse-start-done-background);
+  --_spring: cubic-bezier(.34, 1.56, .64, 1);
+  --_ease: cubic-bezier(.65, 0, .35, 1);
+  --value: 0;
+  --vaadin-button-background: color-mix(in srgb, var(--_tint) calc(var(--pulse-start-hold) * 100%), var(--pulse-start-background));
+  --vaadin-button-text-color: var(--pulse-start-text);
+  --vaadin-button-border-width: 0px;
+  --vaadin-button-label-wrap: nowrap;
+  color: var(--pulse-start-text);
+  transition: scale .3s var(--_spring);
+}
+
+vaadin-button.pulse-start-button[data-phase="failed"] {
+  --_tint: var(--pulse-start-failed-background);
+}
+
+/*
+ * The focus ring sits 2px off the button, which is the same color, so that it
+ * reads as a ring. Drawn as an outline in every theme: Lumo's own is faint here.
+ */
+vaadin-button.pulse-start-button[focus-ring] {
+  outline: 2px solid var(--pulse-start-focus-ring);
+  outline-offset: 2px;
+}
+
+vaadin-button.pulse-start-button[active]:not([aria-disabled="true"]) {
+  scale: .96;
+  transition-duration: .1s;
+}
+
+vaadin-button.pulse-start-button[aria-disabled="true"] {
+  cursor: progress;
+}
+
+.pulse-start-icon {
+  display: inline-flex;
+  width: 1.25em;
+  height: 1.25em;
+}
+
+.pulse-start-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pulse-start-play {
+  fill: currentColor;
+  stroke-width: 1.5;
+  transform-origin: 12px 12px;
+  transition: opacity .25s, scale .35s var(--_spring);
+}
+
+.pulse-start-spinner {
+  opacity: 0;
+  stroke-dasharray: 28 72;
+  transform-origin: 12px 12px;
+  transition: opacity .25s, stroke-dasharray .3s;
+}
+
+:is(.pulse-start-check, .pulse-start-cross) {
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.pulse-start-button[data-phase="running"] .pulse-start-play {
+  opacity: 0;
+  scale: .4;
+}
+
+.pulse-start-button[data-phase="running"] .pulse-start-spinner {
+  opacity: 1;
+  animation: pulse-start-spin .9s linear infinite;
+}
+
+/* Once the work reports Progress, the circle fills with it instead of spinning */
+.pulse-start-button.determinate[data-phase="running"] .pulse-start-spinner {
+  animation: none;
+  rotate: -90deg;
+  stroke-dasharray: calc(var(--value) * 100) 100;
+}
+
+.pulse-start-button:is([data-phase="succeeded"], [data-phase="failed"]) .pulse-start-play {
+  opacity: calc(1 - var(--pulse-start-hold));
+  scale: calc(1 - var(--pulse-start-hold) * .6);
+  transition: none;
+}
+
+.pulse-start-button[data-phase="succeeded"] .pulse-start-check,
+.pulse-start-button[data-phase="failed"] .pulse-start-cross {
+  opacity: var(--pulse-start-hold);
+  animation: pulse-start-draw .4s var(--_ease) .1s forwards;
+}
+
+/* The reel: resting label, "Running…", "Done" or "Failed" (one row), resting label again */
+.pulse-start-reel {
+  display: inline-flex;
+  flex-direction: column;
+  height: 1.5em;
+  line-height: 1.5em;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+  text-align: start;
+}
+
+.pulse-start-reel > span {
+  translate: 0 calc(var(--pulse-start-row) * -100%);
+}
+
+.pulse-start-reel > span:nth-child(4),
+.pulse-start-button[data-phase="failed"] .pulse-start-reel > span:nth-child(3) {
+  display: none;
+}
+
+.pulse-start-button[data-phase="failed"] .pulse-start-reel > span:nth-child(4) {
+  display: block;
+}
+
+vaadin-button.pulse-start-button[data-phase="running"] {
+  animation: pulse-start-roll-run .5s forwards;
+}
+
+vaadin-button.pulse-start-button:is([data-phase="succeeded"], [data-phase="failed"]) {
+  animation: pulse-start-roll-end var(--pulse-start-hold-duration) forwards,
+      pulse-start-hold var(--pulse-start-hold-duration) linear forwards;
+}
+
+vaadin-button.pulse-start-button[data-phase="failed"]::part(label) {
+  animation: pulse-start-shake .4s ease-in-out .15s;
+}
+
+@keyframes pulse-start-roll-run {
+  from { --pulse-start-row: 0; animation-timing-function: var(--_spring); }
+  to { --pulse-start-row: 1; }
+}
+
+@keyframes pulse-start-roll-end {
+  0% { --pulse-start-row: 1; animation-timing-function: var(--_spring); }
+  18%, 72% { --pulse-start-row: 2; animation-timing-function: var(--_ease); }
+  86%, 100% { --pulse-start-row: 3; }
+}
+
+/* Its end tells the browser script to give the button its resting name back */
+@keyframes pulse-start-hold {
+  0%, 70% { --pulse-start-hold: 1; }
+  100% { --pulse-start-hold: 0; }
+}
+
+@keyframes pulse-start-spin {
+  to { rotate: 1turn; }
+}
+
+@keyframes pulse-start-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes pulse-start-shake {
+  0%, 100% { translate: 0; }
+  20%, 60% { translate: -4px; }
+  40%, 80% { translate: 4px; }
+}
+
+/*
+ * Reduced motion: labels and icons swap in place instead of rolling, drawing or
+ * shaking, and the spinner turns slowly, like the progress rings. The colors
+ * still fade, and the hold still ends, so the name comes back.
+ */
+@media (prefers-reduced-motion: reduce) {
+  vaadin-button.pulse-start-button,
+  vaadin-button.pulse-start-button * {
+    transition-duration: .01s !important;
+  }
+
+  vaadin-button.pulse-start-button[active] {
+    scale: none;
+  }
+
+  vaadin-button.pulse-start-button[data-phase="failed"]::part(label) {
+    animation: none;
+  }
+
+  .pulse-start-button[data-phase="succeeded"] .pulse-start-check,
+  .pulse-start-button[data-phase="failed"] .pulse-start-cross {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  vaadin-button.pulse-start-button[data-phase="running"]:not(.determinate) .pulse-start-spinner {
+    animation-duration: 3s;
+  }
+
+  @keyframes pulse-start-roll-run {
+    from, to { --pulse-start-row: 1; }
+  }
+
+  @keyframes pulse-start-roll-end {
+    0%, 70% { --pulse-start-row: 2; }
+    70.01%, 100% { --pulse-start-row: 3; }
+  }
+}

@@ -63,10 +63,12 @@ public final class PulseTask {
         return id;
     }
 
+    /** The Action this Task is a run of. */
     public PulseAction action() {
         return action;
     }
 
+    /** When the Task was started, from the Task list's clock. */
     public Instant startedAt() {
         return startedAt;
     }
@@ -107,6 +109,7 @@ public final class PulseTask {
         return state.map(s -> s == State.RUNNING);
     }
 
+    /** The short line its work last reported about what it is doing, or empty. */
     public Signal<String> statusText() {
         return statusText.asReadonly();
     }
@@ -299,7 +302,14 @@ public final class PulseTask {
 
     /** Where a Task is in its life. A Task starts Running and ends in one of the other three. */
     public enum State {
-        RUNNING, SUCCEEDED, FAILED, CANCELLED
+        /** Its work hasn't finished yet, or is still queued on the executor. */
+        RUNNING,
+        /** Its work returned. */
+        SUCCEEDED,
+        /** Its work threw, or the executor refused it. */
+        FAILED,
+        /** The user cancelled it. */
+        CANCELLED
     }
 
     /** How a Finished Task ended. */
@@ -308,6 +318,9 @@ public final class PulseTask {
         /**
          * The work returned. The Result summary is empty, and the Result file
          * absent, if the work didn't set them.
+         *
+         * @param resultSummary what the Task produced, for example "2,480 records"
+         * @param resultFile the file the Task produced, which the user opens in a new tab
          */
         record Succeeded(String resultSummary, Optional<Path> resultFile) implements Outcome {
 
@@ -317,7 +330,11 @@ public final class PulseTask {
             }
         }
 
-        /** The work threw, or the executor refused it. */
+        /**
+         * The work threw, or the executor refused it.
+         *
+         * @param errorMessage the exception's message, or "Couldn't start" and the reason
+         */
         record Failed(String errorMessage) implements Outcome {
         }
 

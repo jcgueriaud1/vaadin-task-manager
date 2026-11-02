@@ -64,21 +64,24 @@ class ActionsViewTest extends SpringBrowserlessTest {
     }
 
     @Test
-    void startButtonIsLockedWhileItsActionHasARunningTask() {
+    void startButtonShowsItsActionRunningAndAnotherClickThenStartsNothing() {
         Button newsletter = startButton("Send newsletter");
         Button report = startButton("Generate report");
-        assertEquals("Start", newsletter.getText());
 
         test(newsletter).click();
         runPendingSignalsTasks();
-        assertFalse(newsletter.isEnabled());
-        assertEquals("Send newsletter running…", newsletter.getText());
-        assertTrue(report.isEnabled());
+        assertEquals("running", phase(newsletter));
+        assertEquals("Send newsletter running", newsletter.getElement().getAttribute("aria-label"));
+        assertEquals("idle", phase(report));
+
+        test(newsletter).click();
+        runPendingSignalsTasks();
+        assertEquals(1, executor.queued(), "one Running Task per Action");
 
         executor.runAll();
         runPendingSignalsTasks();
-        assertTrue(newsletter.isEnabled());
-        assertEquals("Start", newsletter.getText());
+        assertEquals("succeeded", phase(newsletter));
+        assertEquals("Send newsletter done", newsletter.getElement().getAttribute("aria-label"));
     }
 
     @Test
@@ -97,7 +100,8 @@ class ActionsViewTest extends SpringBrowserlessTest {
         assertTrue(tray.contains("Cancelled"), tray);
         assertFalse(tray.contains("Sending emails"), tray);
         assertFalse($(Button.class).withAriaLabel("Cancel Send newsletter").exists());
-        assertTrue(newsletter.isEnabled());
+        assertEquals("cancelled", phase(newsletter));
+        assertEquals("Start Send newsletter", newsletter.getElement().getAttribute("aria-label"));
     }
 
     @Test
@@ -111,11 +115,11 @@ class ActionsViewTest extends SpringBrowserlessTest {
         String tray = trayText();
         assertTrue(tray.contains("Failed"), tray);
         assertTrue(tray.contains("Server unreachable"), tray);
-        assertTrue(sync.isEnabled());
+        assertEquals("failed", phase(sync));
     }
 
     @Test
-    void aClickThatLosesTheRaceWithAnotherTabIsDroppedAsTheButtonIsAlreadyLocked() {
+    void aClickThatLosesTheRaceWithAnotherTabStartsNothing() {
         Button importData = startButton("Import data");
         // Another tab starts it while this tab's click is on its way to the server: this tab isn't current then
         UI thisTab = UI.getCurrent();
@@ -124,21 +128,24 @@ class ActionsViewTest extends SpringBrowserlessTest {
         UI.setCurrent(thisTab);
         runPendingSignalsTasks();
 
-        assertFalse(importData.isEnabled());
-        importData.click();
+        test(importData).click();
         runPendingSignalsTasks();
 
         assertEquals(1, executor.queued(), "only the other tab's Task");
         assertFalse($(Dialog.class).exists());
-        assertEquals("Import data running…", importData.getText());
+        assertEquals("running", phase(importData));
     }
 
     private Button cancelButton(String actionName) {
         return $(Button.class).withAriaLabel("Cancel " + actionName).single();
     }
 
+    private static String phase(Button startButton) {
+        return startButton.getElement().getAttribute("data-phase");
+    }
+
     private Button startButton(String actionName) {
-        return $(Button.class).withAriaLabel("Start " + actionName).single();
+        return $(Button.class).withAttribute("data-resting-name", "Start " + actionName).single();
     }
 
     private String trayText() {

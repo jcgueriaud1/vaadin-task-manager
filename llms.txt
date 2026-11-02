@@ -1,6 +1,6 @@
 # TaskPulse
 
-> A Vaadin Flow add-on (org.vaadin.addons:taskpulse, Java 21, Vaadin 25, no Spring needed) for running long work in the background from a Vaadin UI. Users start it, follow its progress in a task center, a tray, toasts and native notifications, and get notified when it finishes, in every browser tab of their session. Public types carry the `Pulse` prefix: PulseAction, PulseTask, PulseTaskList, PulseTaskContext, PulseCenter, PulseTab, PulseTaskParts.
+> A Vaadin Flow add-on (org.vaadin.addons:taskpulse, Java 21, Vaadin 25, no Spring needed) for running long work in the background from a Vaadin UI. Users start it, follow its progress in a task center, a tray, toasts and native notifications, and get notified when it finishes, in every browser tab of their session. Public types carry the `Pulse` prefix: PulseAction, PulseTask, PulseTaskList, PulseTaskContext, PulseCenter, PulseStartButton, PulseTab, PulseTaskParts.
 
 ## Docs
 
@@ -13,6 +13,7 @@
 - [Package overview](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/package-info.java): setup and starting a Task, with code
 - [PulseTaskList](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseTaskList.java): the session's Tasks, start(action, work), executors
 - [PulseTaskContext](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseTaskContext.java): what the work reports
+- [PulseStartButton](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseStartButton.java): starts a Task of an Action and shows it running, done or failed, with its accessible names
 - [PulseTab](https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/addon/src/main/java/org/vaadin/addons/taskpulse/PulseTab.java): one per browser tab, the open and view-all handlers
 
 ## Optional

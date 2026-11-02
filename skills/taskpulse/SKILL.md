@@ -36,11 +36,12 @@ static void importData(PulseTaskContext ctx) {          // static: holds no view
     ctx.setResultSummary("2,480 records");               // ctx.setResultFile(path) for a file to open
 }
 
-// In a view: a regular Button, bound so the Action never runs twice
-PulseTaskList taskList = PulseTaskList.getCurrent();
-Button button = new Button("Start", e -> taskList.start(IMPORT_DATA, Imports::importData));
-button.bindEnabled(Signal.not(taskList.isRunning(IMPORT_DATA)));
+// In a view: starts a Task, shows it running, then "Done" or "Failed"
+add(new PulseStartButton(IMPORT_DATA, Imports::importData));
+add(new PulseStartButton("Export", EXPORT_DATA, Exports::exportData));   // its own label
 ```
+
+- `PulseStartButton` follows the Action's latest Task in every tab, also one started by a Retry or another tab, and ignores clicks while it runs. Its accessible name is "Start Import data", "Import data running", "Import data done". Don't set its aria-label: the button manages it. A plain `Button` instead must be bound with `bindEnabled(Signal.not(taskList.isRunning(action)))`.
 
 - An Action is only a name, a `BlockingMode` and a `Retry`. Equal Actions are the same Action, and it has at most one Running Task per session: a second `start` throws `IllegalStateException`.
 - `start(action, work)` runs the work on a virtual thread. `start(action, executor, work)` runs one start elsewhere; `Runnable::run` runs it on the calling thread, for code that already has its own thread (a scheduled job, a queue consumer), never from a click handler.
@@ -62,6 +63,6 @@ button.bindEnabled(Signal.not(taskList.isRunning(IMPORT_DATA)));
 - `PulseTaskParts` builds the tray's pieces (`indicator`, `meta`, `progressBar`, `resultSummary`, `resultFile`, `errorMessage`) for a page of your own.
 - Another clock or executor for the whole session: `PulseTaskList.install(session, new PulseTaskList(clock, executor))` before anything uses the session's Task list. With Spring, from a `@VaadinSessionScope` bean.
 - `PulseTab.setTrayEnabled(false)`, `setPageTitleUpdates(false)` turn off the tray and the title prefix.
-- Styling: override the `--pulse-*` custom properties, for example `html { --pulse-accent: #7c3aed; }`. Classes start with `pulse-`.
+- Styling: override the `--pulse-*` custom properties, for example `html { --pulse-accent: #7c3aed; }`; the start button's are `--pulse-start-*` (backgrounds, text, focus ring, how long "Done" shows). Classes start with `pulse-`.
 
 Full guide: https://github.com/jcgueriaud1/vaadin-task-manager/blob/main/README.md. API reference: the add-on's Javadoc (`-javadoc.jar`, package overview in `org.vaadin.addons.taskpulse`).

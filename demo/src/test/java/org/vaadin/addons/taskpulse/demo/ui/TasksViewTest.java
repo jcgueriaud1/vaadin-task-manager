@@ -263,7 +263,7 @@ class TasksViewTest extends SpringBrowserlessTest {
     }
 
     private void start(String actionName) {
-        test($(Button.class).withAriaLabel("Start " + actionName).single()).click();
+        test($(Button.class).withAttribute("data-resting-name", "Start " + actionName).single()).click();
     }
 
     private List<String> tabLabels() {

@@ -3,7 +3,7 @@
 A Spring Boot app that shows the TaskPulse add-on at work. It is the live demo at
 https://vaadin-task-manager-lljh.onrender.com.
 
-- **Actions page** (`/`): starts each demo Action with a regular button and shows its code. Some report
+- **Actions page** (`/`): starts each demo Action with a `PulseStartButton` and shows its code. Some report
   Progress, one fails at random and one is a Blocking Task.
 - **Background tasks page** (`/tasks`): Tasks filtered by Task state, with a detail pane for the selected Task
   (its URL is `/tasks/{id}`). From there users can Retry a Failed or Cancelled Task, or clear the Task history.

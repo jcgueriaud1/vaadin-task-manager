@@ -21,6 +21,8 @@ The words in bold are defined in [GLOSSARY.md](GLOSSARY.md).
   Tasks, and the button that turns on native notifications.
 - **Tray** (`PulseTray`): a card in the bottom-right of every view with the session's Tasks, a progress ring
   each and their overall Progress. Users can cancel a Running Task, dismiss a **Finished Task** or open it.
+- **Start button** (`PulseStartButton`): starts a Task of an Action and shows how its latest Task is doing, in
+  every tab: "Running…" with a spinner or a progress ring, then "Done" or "Failed" for a moment.
 - **Blocking Tasks**: a **Blocking Task** covers the tab that started it with a dialog until it finishes or the
   user cancels it, and so does its **Retry**. Other tabs of the session stay usable.
 - **One `PulseTab` per browser tab**, set up by the task center, that
@@ -194,7 +196,24 @@ Choose the executor by the kind of work, and set it once: for the whole Task lis
 
 ### 4. Start it from a view
 
-Use a regular `Button`. Bind it to `taskList.isRunning(action)` so the Action never runs twice:
+`PulseStartButton` starts a Task of the Action with its work, on the Task list's executor:
+
+```java
+add(new PulseStartButton(IMPORT_DATA, Imports::importData));                     // "Start"
+add(new PulseStartButton("Export", EXPORT_CUSTOMERS, Exports::exportCustomers));  // its own label
+```
+
+It follows the latest Task of its Action, whoever started it: this tab, another tab of the session or a Retry.
+Its label rolls to "Running…" with a spinner, which turns into a ring once the work reports Progress, then to
+"Done" or "Failed" for a moment, and back. While the Action has a Running Task, a click does nothing. A Task
+that had already finished when the button attached isn't shown again.
+
+For screen readers its name says what it does, then what the Task is doing: "Start Import data",
+"Import data running" (with `aria-disabled`), "Import data done", and "Start Import data" again once the
+"Done" look has faded. The toasts announce how the Task ended. With reduced motion, the labels and icons
+swap in place.
+
+A regular `Button` works too. Bind it to `taskList.isRunning(action)` so the Action never runs twice:
 
 ```java
 PulseTaskList taskList = PulseTaskList.getCurrent();
@@ -255,6 +274,11 @@ html {
   --pulse-accent: #7c3aed;
 }
 ```
+
+The start button has its own: `--pulse-start-background`, `--pulse-start-text`,
+`--pulse-start-done-background`, `--pulse-start-failed-background`, `--pulse-start-focus-ring` and
+`--pulse-start-hold-duration` (how long "Done" or "Failed" shows, 2.6s). Keep 4.5:1 between the text and each
+background, and 3:1 between the focus ring and the page.
 
 ## Using TaskPulse with a coding agent
 

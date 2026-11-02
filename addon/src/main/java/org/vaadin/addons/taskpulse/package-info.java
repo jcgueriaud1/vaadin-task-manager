@@ -10,8 +10,9 @@
  * a virtual thread unless another executor is given, and reports through its
  * {@link org.vaadin.addons.taskpulse.PulseTaskContext}. The
  * {@link org.vaadin.addons.taskpulse.PulseCenter task center}, the
- * {@link org.vaadin.addons.taskpulse.PulseTray tray}, the toasts and the Blocking
- * Task dialog follow the Task's signals.
+ * {@link org.vaadin.addons.taskpulse.PulseTray tray}, the
+ * {@link org.vaadin.addons.taskpulse.PulseStartButton start button}, the toasts
+ * and the Blocking Task dialog follow the Task's signals.
  *
  * <h2>Setup</h2>
  * Turn on server push, put the task center in the main layout, and set what
@@ -45,10 +46,8 @@
  *     ctx.setResultSummary("2,480 records");
  * }
  *
- * // In a view: a regular Button, disabled while the Action is Running
- * PulseTaskList taskList = PulseTaskList.getCurrent();
- * Button button = new Button("Start", e -> taskList.start(IMPORT_DATA, Imports::importData));
- * button.bindEnabled(Signal.not(taskList.isRunning(IMPORT_DATA)));
+ * // In a view: starts a Task and shows it running, then done or failed
+ * add(new PulseStartButton(IMPORT_DATA, Imports::importData));
  * }
  *
  * <h2>Rules</h2>

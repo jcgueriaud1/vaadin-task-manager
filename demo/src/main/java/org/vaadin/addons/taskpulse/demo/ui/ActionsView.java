@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
@@ -18,8 +19,13 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Pre;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.dependency.StyleSheet;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.signals.Signal;
 import org.vaadin.addons.taskpulse.PulseAction;
 import org.vaadin.addons.taskpulse.PulseAction.BlockingMode;
@@ -32,7 +38,8 @@ import org.vaadin.addons.taskpulse.PulseTaskList;
  */
 @Route(value = "", layout = MainLayout.class)
 @PageTitle("Actions")
-public class ActionsView extends Div {
+@StyleSheet("prototype-start-buttons.css") // PROTOTYPE
+public class ActionsView extends Div implements BeforeEnterObserver {
 
     static final PulseAction SEND_NEWSLETTER = new PulseAction("Send newsletter", BlockingMode.NON_BLOCKING);
     static final PulseAction GENERATE_REPORT = new PulseAction("Generate report", BlockingMode.NON_BLOCKING);
@@ -124,6 +131,14 @@ public class ActionsView extends Div {
     }
 
     private final PulseTaskList taskList;
+
+    // PROTOTYPE: each card's start button sits in a slot, so ?variant= can swap it
+    private record Slot(Div holder, Demo demo) {
+    }
+
+    private final List<Slot> slots = new ArrayList<>();
+    private String variant = "A";
+    private Component switcher;
 
     @Autowired
     public ActionsView(PulseTaskList taskList) {
@@ -313,8 +328,9 @@ public class ActionsView extends Div {
     }
 
     private Div card(Demo demo, String kind, String explanation, String code) {
-        Button start = startButton(demo.action(), demo.work());
-        start.addThemeVariants(ButtonVariant.PRIMARY);
+        Div start = new Div(startButton(demo, variant));
+        start.addClassName("prototype-slot");
+        slots.add(new Slot(start, demo));
         Div card = new Div(new H2(demo.action().name()));
         if (!kind.isEmpty()) {
             Span kindLabel = new Span(kind);
@@ -327,6 +343,39 @@ public class ActionsView extends Div {
         }
         card.addClassName("action-card");
         return card;
+    }
+
+    private Component startButton(Demo demo, String variant) {
+        return PrototypeStartButtons.create(variant, taskList, demo.action(), demo.work(), action -> {
+            Button start = startButton(action, demo.work());
+            start.addThemeVariants(ButtonVariant.PRIMARY);
+            return start;
+        });
+    }
+
+    /** PROTOTYPE: shows the start buttons of the {@code ?variant=} in the URL, outside production. */
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (VaadinService.getCurrent() == null
+                || VaadinService.getCurrent().getDeploymentConfiguration().isProductionMode()) {
+            return;
+        }
+        String requested = event.getLocation().getQueryParameters().getSingleParameter("variant").orElse("A");
+        if (!PrototypeStartButtons.VARIANTS.contains(requested)) {
+            requested = "A";
+        }
+        if (!requested.equals(variant)) {
+            variant = requested;
+            slots.forEach(slot -> {
+                slot.holder().removeAll();
+                slot.holder().add(startButton(slot.demo(), variant));
+            });
+        }
+        if (switcher != null) {
+            remove(switcher);
+        }
+        switcher = PrototypeStartButtons.switcher(variant);
+        add(switcher);
     }
 
     private static Details code(String summary, String code) {

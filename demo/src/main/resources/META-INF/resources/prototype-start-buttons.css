@@ -1,0 +1,512 @@
+/*
+ * PROTOTYPE, throwaway: the looks of PrototypeStartButtons (?variant=B|C|D on
+ * the Actions page). The server only sets data-phase (idle | running |
+ * succeeded | failed | cancelled), the "determinate" class and --value, the
+ * Task's Progress from 0 to 1. Everything that moves is CSS: the "Done" and
+ * "Failed" looks fade back to resting through --pb-hold, with no server timer.
+ */
+
+@property --pb-hold {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --pb-row {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@keyframes pb-hold {
+  0%, 70% { --pb-hold: 1; }
+  100% { --pb-hold: 0; }
+}
+
+@keyframes pb-shake {
+  0%, 100% { translate: 0; }
+  20%, 60% { translate: -4px; }
+  40%, 80% { translate: 4px; }
+}
+
+@keyframes pb-spin {
+  to { rotate: 1turn; }
+}
+
+@keyframes pb-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+vaadin-button.pb {
+  --pb-accent: var(--pulse-accent);
+  --pb-on-accent: var(--aura-accent-contrast-color, var(--lumo-primary-contrast-color, #fff));
+  --pb-success: var(--aura-green, var(--lumo-success-color, #1e8e3e));
+  --pb-error: var(--pulse-error);
+  --pb-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --pb-ease: cubic-bezier(.65, 0, .35, 1);
+  --value: 0;
+  position: relative;
+  isolation: isolate;
+  transition: scale .3s var(--pb-spring);
+}
+
+vaadin-button.pb[active] {
+  scale: .96;
+  transition-duration: .1s;
+}
+
+vaadin-button.pb:is([data-phase="succeeded"], [data-phase="failed"]) {
+  animation: pb-hold 2.6s linear forwards;
+}
+
+vaadin-button.pb[data-phase="failed"]::part(label) {
+  animation: pb-shake .4s ease-in-out .15s;
+}
+
+vaadin-button.pb[aria-disabled="true"] {
+  cursor: progress;
+}
+
+/* ---------------------------------------------------------------- B: rolling label */
+
+vaadin-button.pb-rolling {
+  --_tint: var(--pb-success);
+  --vaadin-button-background: color-mix(in srgb, var(--_tint) calc(var(--pb-hold) * 100%), var(--pb-accent));
+  --vaadin-button-text-color: var(--pb-on-accent);
+  --vaadin-button-border-width: 0px;
+  --vaadin-button-label-wrap: nowrap;
+  color: var(--pb-on-accent);
+}
+
+vaadin-button.pb-rolling[data-phase="failed"] {
+  --_tint: var(--pb-error);
+}
+
+vaadin-button.pb-rolling .pb-icon {
+  display: inline-flex;
+  width: 1.25em;
+  height: 1.25em;
+}
+
+vaadin-button.pb-rolling svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+vaadin-button.pb-rolling .pb-play {
+  fill: currentColor;
+  stroke-width: 1.5;
+  transform-origin: 12px 12px;
+  transition: opacity .25s, scale .35s var(--pb-spring);
+}
+
+vaadin-button.pb-rolling .pb-spin {
+  opacity: 0;
+  stroke-dasharray: 28 72;
+  transform-origin: 12px 12px;
+  transition: opacity .25s, stroke-dasharray .3s;
+}
+
+vaadin-button.pb-rolling :is(.pb-check, .pb-cross) {
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+vaadin-button.pb-rolling[data-phase="running"] .pb-play {
+  opacity: 0;
+  scale: .4;
+}
+
+vaadin-button.pb-rolling[data-phase="running"] .pb-spin {
+  opacity: 1;
+  animation: pb-spin .9s linear infinite;
+}
+
+/* Determinate: the circle shows the real Progress instead of spinning */
+vaadin-button.pb-rolling[data-phase="running"].determinate .pb-spin {
+  animation: none;
+  rotate: -90deg;
+  stroke-dasharray: calc(var(--value) * 100) 100;
+}
+
+vaadin-button.pb-rolling:is([data-phase="succeeded"], [data-phase="failed"]) .pb-play {
+  opacity: calc(1 - var(--pb-hold));
+  scale: calc(1 - var(--pb-hold) * .6);
+  transition: none;
+}
+
+vaadin-button.pb-rolling[data-phase="succeeded"] .pb-check,
+vaadin-button.pb-rolling[data-phase="failed"] .pb-cross {
+  opacity: var(--pb-hold);
+  animation: pb-draw .4s var(--pb-ease) .1s forwards;
+}
+
+/* The reel: Start, Running…, Done or Failed, Start again. It only rolls up */
+vaadin-button.pb-rolling .pb-reel {
+  display: inline-flex;
+  flex-direction: column;
+  height: 1.5em;
+  line-height: 1.5em;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+  text-align: start;
+}
+
+vaadin-button.pb-rolling .pb-reel > span {
+  translate: 0 calc(var(--pb-row) * -100%);
+}
+
+vaadin-button.pb-rolling .pb-reel > span:nth-child(4) {
+  /* "Failed" shares the third row with "Done": see below */
+  display: none;
+}
+
+vaadin-button.pb-rolling[data-phase="failed"] .pb-reel > span:nth-child(3) {
+  display: none;
+}
+
+vaadin-button.pb-rolling[data-phase="failed"] .pb-reel > span:nth-child(4) {
+  display: block;
+}
+
+vaadin-button.pb-rolling .pb-reel::after {
+  content: "Start";
+  translate: 0 calc(var(--pb-row) * -100%);
+}
+
+@keyframes pb-roll-run {
+  from { --pb-row: 0; animation-timing-function: var(--pb-spring); }
+  to { --pb-row: 1; }
+}
+
+@keyframes pb-roll-end {
+  0% { --pb-row: 1; animation-timing-function: var(--pb-spring); }
+  18%, 72% { --pb-row: 2; animation-timing-function: var(--pb-ease); }
+  86%, 100% { --pb-row: 3; }
+}
+
+vaadin-button.pb-rolling[data-phase="running"] {
+  animation: pb-roll-run .5s forwards;
+}
+
+vaadin-button.pb-rolling:is([data-phase="succeeded"], [data-phase="failed"]) {
+  animation: pb-roll-end 2.6s forwards, pb-hold 2.6s linear forwards;
+}
+
+/* ---------------------------------------------------------------- C: progress fill */
+
+vaadin-button.pb-fill {
+  --_tint: var(--pb-accent);
+  --vaadin-button-background: color-mix(in srgb, var(--pb-accent) 10%, transparent);
+  --vaadin-button-text-color: var(--vaadin-text-color);
+  --vaadin-button-border-width: 1px;
+  --vaadin-button-border-color: color-mix(in srgb, var(--pb-accent) 35%, transparent);
+  --vaadin-button-label-wrap: nowrap;
+  width: 19rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+vaadin-button.pb-fill::part(label) {
+  flex: 1;
+  min-width: 0;
+}
+
+vaadin-button.pb-fill[data-phase="succeeded"] { --_tint: var(--pb-success); }
+vaadin-button.pb-fill[data-phase="failed"] { --_tint: var(--pb-error); }
+
+vaadin-button.pb-fill .pb-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: 0;
+  background: color-mix(in srgb, var(--_tint) 24%, transparent);
+  box-shadow: inset -3px 0 0 var(--_tint);
+  transition: width .35s var(--pb-ease), opacity .3s;
+}
+
+vaadin-button.pb-fill[data-phase="running"].determinate .pb-bar {
+  width: calc(var(--value) * 100%);
+}
+
+/* Indeterminate: stripes run across the whole button until the first Progress */
+vaadin-button.pb-fill[data-phase="running"]:not(.determinate) .pb-bar {
+  width: 100%;
+  box-shadow: none;
+  background: repeating-linear-gradient(-45deg,
+      color-mix(in srgb, var(--_tint) 22%, transparent) 0 10px,
+      color-mix(in srgb, var(--_tint) 8%, transparent) 10px 20px);
+  background-size: 28px 100%;
+  animation: pb-stripes .8s linear infinite;
+}
+
+@keyframes pb-stripes {
+  to { background-position: 28px 0; }
+}
+
+vaadin-button.pb-fill:is([data-phase="succeeded"], [data-phase="failed"]) .pb-bar {
+  width: 100%;
+  box-shadow: none;
+  opacity: var(--pb-hold);
+  transition: width .35s var(--pb-ease);
+}
+
+vaadin-button.pb-fill .pb-labels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: .75em;
+  width: 100%;
+}
+
+vaadin-button.pb-fill :is(.pb-rest, .pb-status) {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+  transition: opacity .25s, translate .35s var(--pb-spring);
+}
+
+vaadin-button.pb-fill .pb-rest {
+  font-weight: var(--pulse-font-weight-semibold);
+  color: var(--pulse-accent-text);
+}
+
+vaadin-button.pb-fill .pb-status {
+  opacity: 0;
+  translate: 0 .6em;
+}
+
+vaadin-button.pb-fill .pb-percent {
+  grid-area: 1 / 2;
+  opacity: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-text-color-secondary);
+  transition: opacity .25s;
+}
+
+vaadin-button.pb-fill[data-phase="running"] .pb-rest {
+  opacity: 0;
+  translate: 0 -.6em;
+}
+
+vaadin-button.pb-fill[data-phase="running"] .pb-status {
+  opacity: 1;
+  translate: 0;
+}
+
+vaadin-button.pb-fill[data-phase="running"].determinate .pb-percent {
+  opacity: 1;
+}
+
+vaadin-button.pb-fill:is([data-phase="succeeded"], [data-phase="failed"]) .pb-status {
+  opacity: var(--pb-hold);
+  translate: 0;
+  transition: none;
+  font-weight: var(--pulse-font-weight-medium);
+}
+
+vaadin-button.pb-fill[data-phase="succeeded"] .pb-status { color: var(--pulse-success-text); }
+vaadin-button.pb-fill[data-phase="failed"] .pb-status { color: var(--pulse-error-text); }
+
+vaadin-button.pb-fill:is([data-phase="succeeded"], [data-phase="failed"]) .pb-rest {
+  opacity: calc(1 - var(--pb-hold));
+  translate: 0;
+  transition: none;
+}
+
+/* ---------------------------------------------------------------- D: ring morph */
+
+vaadin-button.pb-ring {
+  --_h: 2.375rem;
+  --_tint: var(--pb-success);
+  --vaadin-button-background: color-mix(in srgb, var(--_tint) calc(var(--pb-hold) * 100%), var(--pb-accent));
+  --vaadin-button-text-color: var(--pb-on-accent);
+  --vaadin-button-border-width: 0px;
+  --vaadin-button-padding: 0;
+  --vaadin-button-height: var(--_h);
+  --vaadin-button-border-radius: calc(var(--_h) / 2);
+  color: var(--pb-on-accent);
+  width: 8.5rem;
+  height: var(--_h);
+  min-width: 0;
+  transition: width .5s var(--pb-spring), scale .3s var(--pb-spring),
+      --vaadin-button-background .3s;
+}
+
+vaadin-button.pb-ring[data-phase="failed"] {
+  --_tint: var(--pb-error);
+}
+
+vaadin-button.pb-ring[data-phase="running"] {
+  width: var(--_h);
+  --vaadin-button-background: color-mix(in srgb, var(--pb-accent) 14%, transparent);
+  transition: width .45s var(--pb-ease), --vaadin-button-background .3s;
+}
+
+vaadin-button.pb-ring::part(label) {
+  overflow: visible;
+}
+
+vaadin-button.pb-ring .pb-face {
+  display: grid;
+  place-items: center;
+  width: 8.5rem;
+  height: var(--_h);
+}
+
+vaadin-button.pb-ring .pb-face > * {
+  grid-area: 1 / 1;
+  transition: opacity .25s, scale .4s var(--pb-spring);
+}
+
+vaadin-button.pb-ring .pb-label {
+  font-weight: var(--pulse-font-weight-semibold);
+}
+
+vaadin-button.pb-ring .pb-ring {
+  width: calc(var(--_h) - 6px);
+  height: calc(var(--_h) - 6px);
+  border-radius: 50%;
+  background: conic-gradient(var(--pb-accent) calc(var(--value) * 1turn),
+      color-mix(in srgb, var(--pb-accent) 20%, transparent) 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  opacity: 0;
+  scale: .5;
+}
+
+vaadin-button.pb-ring:not(.determinate) .pb-ring {
+  background: conic-gradient(var(--pb-accent) .3turn,
+      color-mix(in srgb, var(--pb-accent) 20%, transparent) 0);
+}
+
+vaadin-button.pb-ring .pb-stop {
+  width: .625rem;
+  height: .625rem;
+  border-radius: 2px;
+  background: var(--pb-accent);
+  opacity: 0;
+  scale: 0;
+}
+
+vaadin-button.pb-ring .pb-done-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-inline-end: 3.75rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+vaadin-button.pb-ring .pb-done-icon path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+vaadin-button.pb-ring .pb-done-label {
+  margin-inline-start: 1.25rem;
+  font-weight: var(--pulse-font-weight-semibold);
+  opacity: 0;
+}
+
+vaadin-button.pb-ring[data-phase="running"] .pb-label {
+  opacity: 0;
+  scale: .6;
+}
+
+vaadin-button.pb-ring[data-phase="running"] .pb-ring {
+  opacity: 1;
+  scale: 1;
+}
+
+vaadin-button.pb-ring[data-phase="running"]:not(.determinate) .pb-ring {
+  animation: pb-spin 1s linear infinite;
+}
+
+vaadin-button.pb-ring[data-phase="running"] .pb-stop {
+  opacity: 1;
+  scale: 1;
+  transition-delay: .2s;
+}
+
+vaadin-button.pb-ring[data-phase="running"]:hover .pb-stop {
+  scale: 1.35;
+}
+
+vaadin-button.pb-ring:is([data-phase="succeeded"], [data-phase="failed"]) :is(.pb-done-icon, .pb-done-label) {
+  opacity: var(--pb-hold);
+  transition: none;
+}
+
+vaadin-button.pb-ring:is([data-phase="succeeded"], [data-phase="failed"]) .pb-label {
+  opacity: calc(1 - var(--pb-hold));
+  transition: none;
+}
+
+vaadin-button.pb-ring[data-phase="succeeded"] .pb-check,
+vaadin-button.pb-ring[data-phase="failed"] .pb-cross {
+  opacity: 1;
+  animation: pb-draw .45s var(--pb-ease) .25s forwards;
+}
+
+/* ---------------------------------------------------------------- reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  vaadin-button.pb,
+  vaadin-button.pb * {
+    transition-duration: .01s !important;
+  }
+
+  vaadin-button.pb[data-phase="failed"]::part(label) {
+    animation: none;
+  }
+
+  vaadin-button.pb-rolling[data-phase="running"] .pb-spin,
+  vaadin-button.pb-ring[data-phase="running"] .pb-ring {
+    animation-duration: 3s;
+  }
+}
+
+/* ---------------------------------------------------------------- page bits */
+
+.action-card > .prototype-slot {
+  align-self: flex-start;
+  margin-top: .25rem;
+}
+
+.prototype-switcher {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .25rem .5rem;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font: 500 .875rem/1 system-ui, sans-serif;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 35%);
+}
+
+.prototype-switcher vaadin-button {
+  --vaadin-button-background: transparent;
+  --vaadin-button-text-color: #fff;
+  --vaadin-button-border-width: 0px;
+  color: #fff;
+  min-width: 2rem;
+}
